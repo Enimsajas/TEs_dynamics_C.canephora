@@ -1,0 +1,1242 @@
+---
+title: "Stats_recap_TEs_freq"
+author: "Jas"
+format: html
+editor: visual
+---
+
+# Stats recap TE freq
+
+Jeux de données
+
+```{r}
+# Chargement du fichier
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+# enlever les gyspsy non assignés
+# Filtrer pour retirer les lignes où Family est vide
+library(dplyr)
+data <- data %>% filter(Family != "")
+# enlever les individus sans autorisation d'utilisation... :3
+data <- data %>% select(-all_of(c(
+  "X20135.NoIndex.L003.MERGED", "X20159.NoIndex.L005.MERGED", "X20511_NoIndex_L001.MERGED", 
+  "X20650.NoIndex.L007.MERGED", "X20658.NoIndex.L002.MERGED", "X20708.NoIndex.L008.MERGED", 
+  "X20723.NoIndex.L007.MERGED", "X20731.NoIndex.L002.MERGED", "C.147", "C018.MERGED", 
+  "J.18", "J.2", "J.22", "J.9", "M1", "M2", "M3", "M4", 
+  "N.11", "N.37", "N.38", "N.39", "N.42", "N.5"
+)))
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer une liste de populations basée sur Group_analysis
+populations <- split(correspondance$formatted_id, correspondance$Group_analysis)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+# Créer les groupes combinés
+pop_AG <- c(pop_A, pop_G)
+pop_ER <- c(pop_E, pop_R)
+pop_OB <- c(pop_O, pop_B)
+```
+
+Sous ensemble par Famille TEs et populations/groupes génétiques de *Coffea canephora*
+
+```{r}
+library(dplyr)
+# data total gypsy ou copia
+data_gypsy <- data %>% filter(Superfamily == "RLG")
+write.table(data_gypsy, file = "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_RLG.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+data_Copia <- data %>% filter(Superfamily == "RLC")
+write.table(data_Copia, file = "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_RLC.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# par population/gp genetiques :
+# Colonnes d'informations générales
+info_cols <- c("MEI", "CHROM", "POS", "REF", "ALT", "SVLEN", "X0START", "X0END", 
+               "MESTRAND", "Type", "Superfamily", "Family", "Line")
+
+# Fonction pour créer un sous-dataframe par population
+Indv_matrix_fonction <- function(data, pop_vector) {
+  existing_ids <- pop_vector[pop_vector %in% colnames(data)]  # garde uniquement les IDs présents dans les colonnes
+  data %>% select(all_of(c(info_cols, existing_ids)))
+}
+
+# Sous-jeux de données par groupe
+Indv_matrix_AG <- Indv_matrix_fonction(data, pop_AG)
+Indv_matrix_AG_Gypsy <- Indv_matrix_AG %>% filter(Superfamily == "RLG")
+write.table(data_gypsy, file = "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_AG_Gypsy.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+Indv_matrix_AG_Copia <- Indv_matrix_AG %>% filter(Superfamily == "RLC")
+write.table(data_gypsy, file = "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_AG_Copia.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+Indv_matrix_C  <- Indv_matrix_fonction(data, pop_C)
+Indv_matrix_C_Gypsy <- Indv_matrix_C %>% filter(Superfamily == "RLG")
+write.table(data_gypsy, file = "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_C_Gypsy.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+Indv_matrix_C_Copia <- Indv_matrix_C %>% filter(Superfamily == "RLC")
+write.table(data_gypsy, file = "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_C_Copia.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+Indv_matrix_D  <- Indv_matrix_fonction(data, pop_D)
+Indv_matrix_D_Gypsy <- Indv_matrix_D %>% filter(Superfamily == "RLG")
+write.table(data_gypsy, file = "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_D_Gypsy.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+Indv_matrix_D_Copia <- Indv_matrix_D %>% filter(Superfamily == "RLC")
+write.table(data_gypsy, file = "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_D_Copia.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+Indv_matrix_ER <- Indv_matrix_fonction(data, pop_ER)
+Indv_matrix_ER_Gypsy <- Indv_matrix_ER %>% filter(Superfamily == "RLG")
+write.table(data_gypsy, file = "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_ER_Gypsy.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+Indv_matrix_ER_Copia <- Indv_matrix_ER %>% filter(Superfamily == "RLC")
+write.table(data_gypsy, file = "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_ER_Copia.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+Indv_matrix_OB <- Indv_matrix_fonction(data, pop_OB)
+Indv_matrix_OB_Gypsy <- Indv_matrix_OB %>% filter(Superfamily == "RLG")
+write.table(data_gypsy, file = "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_OB_Gypsy.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+Indv_matrix_OB_Copia <- Indv_matrix_OB %>% filter(Superfamily == "RLC")
+write.table(data_gypsy, file = "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_OB_Copia.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+Indv_matrix_hb <- Indv_matrix_fonction(data, pop_hb)
+Indv_matrix_hb_Gypsy <- Indv_matrix_hb %>% filter(Superfamily == "RLG")
+write.table(data_gypsy, file = "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_hb_Gypsy.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+Indv_matrix_hb_Copia <- Indv_matrix_hb %>% filter(Superfamily == "RLC")
+write.table(data_gypsy, file = "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_hb_Copia.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+Indv_matrix_V  <- Indv_matrix_fonction(data, pop_V)
+Indv_matrix_V_Gypsy <- Indv_matrix_V %>% filter(Superfamily == "RLG")
+write.table(data_gypsy, file = "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_V_Gypsy.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+Indv_matrix_V_Copia <- Indv_matrix_V %>% filter(Superfamily == "RLC")
+write.table(data_gypsy, file = "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_V_Copia.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+```
+
+## *SPS/A*
+
+### Fonctions
+
+Calculer les frequences TEs
+
+```{r}
+# Fonction pour calculer la fréquence des éléments transposables
+calculate_te_frequency <- function(df) {
+  # Identifier les colonnes d'information TE et les colonnes individuelles
+  info_cols <- c("MEI", "CHROM", "POS")
+  meta_cols <- c("REF", "ALT", "SVLEN", "X0START", "X0END", "MESTRAND", "Type", "Superfamily", "Family", "Line")
+  
+  # Toutes les colonnes entre POS et REF sont considérées comme des individus
+  all_cols <- colnames(df)
+  pos_index <- which(all_cols == "POS")
+  ref_index <- which(all_cols == "REF")
+  
+  # Colonnes des individus
+  individual_cols <- all_cols[(pos_index + 1):(ref_index - 1)]
+  
+  # Créer un dataframe pour les résultats
+  results <- data.frame()
+  
+  # Pour chaque ligne du dataframe (chaque élément transposable)
+  for (i in 1:nrow(df)) {
+    # Extraire les données des individus pour cette position
+    individual_data <- as.numeric(as.character(df[i, individual_cols]))
+    
+    # Compter le nombre d'individus homozygotes (2), hétérozygotes (1) et absents (0)
+    homozygotes <- sum(individual_data == 2, na.rm = TRUE)
+    heterozygotes <- sum(individual_data == 1, na.rm = TRUE)
+    absents <- sum(individual_data == 0, na.rm = TRUE)
+    
+    # Gestion des NA
+    na_count <- sum(is.na(individual_data))
+    
+    # Calculer le nombre total d'individus (sans compter les NA)
+    total_individuals <- homozygotes + heterozygotes + absents
+    
+    # Calculer le nombre d'allèles avec l'élément transposable
+    allele_count <- (2 * homozygotes) + heterozygotes
+    
+    # Calculer le nombre total d'allèles
+    total_alleles <- 2 * total_individuals
+    
+    # Calculer la fréquence
+    frequency <- allele_count / total_alleles
+    
+    # Extraire les informations d'identification pour cet élément
+    mei <- as.character(df[i, "MEI"])
+    chrom <- as.character(df[i, "CHROM"])
+    pos <- as.numeric(as.character(df[i, "POS"]))
+    
+    # Extraire les métadonnées
+    type <- if("Type" %in% colnames(df)) as.character(df[i, "Type"]) else NA
+    superfamily <- if("Superfamily" %in% colnames(df)) as.character(df[i, "Superfamily"]) else NA
+    family <- if("Family" %in% colnames(df)) as.character(df[i, "Family"]) else NA
+    line <- if("Line" %in% colnames(df)) as.character(df[i, "Line"]) else NA
+    
+    # Créer une ligne pour les résultats
+    result_row <- data.frame(
+      MEI = mei,
+      CHROM = chrom,
+      POS = pos,
+      Type = type,
+      Superfamily = superfamily,
+      Family = family,
+      Line = line,
+      Homozygotes = homozygotes,
+      Heterozygotes = heterozygotes,
+      Absents = absents,
+      NA_Count = na_count,
+      Total_Individuals = total_individuals,
+      TEs_Count = allele_count,
+      Total_TEs = total_alleles,
+      Frequency = frequency,
+      stringsAsFactors = FALSE
+    )
+    
+    # Ajouter la ligne aux résultats
+    results <- rbind(results, result_row)
+  }
+  
+  return(results)
+}
+```
+
+Illustrations
+
+```{r}
+  ### TOTAL TEs ###
+# Fonction pour analyser et visualiser les résultats
+analyze_te_frequencies <- function(result_df) {
+  library(dplyr)
+  
+   # Filtrer les fréquences non nulles
+filtered_df <- result_df %>% filter(Frequency > 0)
+  
+  # Création d'un histogramme des fréquences
+hist_tot <- hist(filtered_df$Frequency, 
+       main = "Distribution des fréquences des éléments transposables",
+       xlab = "Fréquence TEs", 
+       ylab = "Nombre d'occurrences (counts)",
+       breaks = 20,
+       col = "skyblue",
+       xaxt = "n") # Supprime l'axe des x par défaut
+    # Ajout d'un axe personnalisé sans le zéro
+  axis(1, at = hist_tot$mids, labels = sprintf("%.2f", hist_tot$mids))
+  # Ajout des étiquettes pour le nombre d'occurrences sur chaque barre
+  text(x = hist_tot$mids, y = hist_tot$counts, labels = hist_tot$counts, pos = 3, cex = 0.8)
+  # Retourner les statistiques
+  return(list(
+    summary_stats = summary(filtered_df$Frequency),
+    filtered_count = nrow(filtered_df)
+  ))
+}
+
+
+
+
+
+   ### GYPSY ###
+# Fonction pour analyser et visualiser les résultats
+analyze_Gypsy_frequencies <- function(result_df) {
+  library(dplyr)
+    # Filtrer les fréquences non nulles
+  filtered_df_gypsy <- result_df %>% filter(Frequency > 0)
+  # Création d'un histogramme des fréquences
+hist_gypsy <-  hist(filtered_df_gypsy$Frequency, 
+       main = "Distribution des fréquences des RT-LTR Gypsy",
+       xlab = "Fréquence RT-LTR Gypsy", 
+       ylab = "Nombre d'occurrences (counts)",
+       breaks = 20,
+       col = "#63C5B8",
+       xaxt = "n") # Supprime l'axe des x
+  # Ajout d'un axe personnalisé sans le zéro
+  axis(1, at = hist_gypsy$mids, labels = sprintf("%.2f", hist_gypsy$mids))
+  # Ajout des étiquettes pour le nombre d'occurrences sur chaque barre
+  text(x = hist_gypsy$mids, y = hist_gypsy$counts, labels = hist_gypsy$counts, pos = 3, cex = 0.8)
+  # Retourner les statistiques
+  return(list(
+    summary_stats = summary(filtered_df_gypsy$Frequency),
+    filtered_count = nrow(filtered_df_gypsy)
+  ))
+}
+
+
+
+
+
+   ### COPIA ### 
+# Fonction pour analyser et visualiser les résultats
+analyze_Copia_frequencies <- function(result_df) {
+  library(dplyr)
+  
+      # Filtrer les fréquences non nulles
+  filtered_df_copia <- result_df %>% filter(Frequency > 0)
+
+  # Création d'un histogramme des fréquences
+hist_copia <- hist(filtered_df_copia$Frequency, 
+       main = "Distribution des fréquences des RT-LTR Copia",
+       xlab = "Fréquence RT-LTR Copia", 
+       ylab = "Nombre d'occurrences (counts)",
+       breaks = 20,
+       col = "#FFA07A",
+       xaxt = "n") # Supprime l'axe des x
+  # Ajout d'un axe personnalisé sans le zéro
+  axis(1, at = hist_copia$mids, labels = sprintf("%.2f", hist_copia$mids))
+  # Ajout des étiquettes pour le nombre d'occurrences sur chaque barre
+  text(x = hist_copia$mids, y = hist_copia$counts, labels = hist_copia$counts, pos = 3, cex = 0.8)
+  # Retourner les statistiques
+  return(list(
+    summary_stats = summary(filtered_df_copia$Frequency),
+    filtered_count = nrow(filtered_df_copia)
+  ))
+}
+```
+
+### Application aux jeux de données
+
+#### Complet
+
+```{r}
+# Utilisation avec mes données Complètes
+# Calculer les fréquences
+te_frequencies <- calculate_te_frequency(data)
+# Enregistrer les résultats dans un fichier
+write.table(te_frequencies, file = "~/M2/Cafeier/Codes/Matrice_indv/TE_frequency_by_position.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+stats <- analyze_te_frequencies(te_frequencies)
+
+
+
+
+### Pour Gypsy ###
+# Calculer les fréquences
+Gypsy_frequencies <- calculate_te_frequency(data_Gypsy)
+# Enregistrer les résultats dans un fichier
+write.table(Gypsy_frequencies, file = "~/M2/Cafeier/Codes/Matrice_indv/Gypsy_frequency_by_position.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+stats_Gypsy <- analyze_Gypsy_frequencies(Gypsy_frequencies)
+
+
+
+
+### Pour Copia ###
+# Calculer les fréquences
+Copia_frequencies <- calculate_te_frequency(data_Copia)
+# Enregistrer les résultats dans un fichier
+write.table(Copia_frequencies, file = "~/M2/Cafeier/Codes/Matrice_indv/Copia_frequency_by_position.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+stats_Copia <- analyze_Copia_frequencies(Copia_frequencies)
+```
+
+#### AG
+
+```{r}
+# Calculer les fréquences
+te_frequencies_popAG <- calculate_te_frequency(Indv_matrix_AG)
+# Enregistrer les résultats dans un fichier
+write.table(te_frequencies_popAG, file = "~/M2/Cafeier/Codes/Matrice_indv/TE_frequency_by_position_popAG.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statsAG <- analyze_te_frequencies(te_frequencies_popAG)
+
+
+
+
+### Pour Gypsy ###
+# Calculer les fréquences
+Gypsy_frequencies_popAG <- calculate_te_frequency(Indv_matrix_AG_Gypsy)
+# Enregistrer les résultats dans un fichier
+write.table(Gypsy_frequencies_popAG, file = "~/M2/Cafeier/Codes/Matrice_indv/Gypsy_frequency_by_position_popAG.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statsAG_Gypsy <- analyze_Gypsy_frequencies(Gypsy_frequencies_popAG)
+
+### Pour Copia ###
+# Calculer les fréquences
+Copia_frequencies_popAG <- calculate_te_frequency(Indv_matrix_AG_Copia)
+# Enregistrer les résultats dans un fichier
+write.table(Copia_frequencies_popAG, file = "~/M2/Cafeier/Codes/Matrice_indv/Copia_frequency_by_position_popAG.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statsAG_Copia <- analyze_Copia_frequencies(Copia_frequencies_popAG)
+```
+
+#### C
+
+```{r}
+  # Calculer les fréquences
+  te_frequencies_popC <- calculate_te_frequency(Indv_matrix_C)
+  # Enregistrer les résultats
+  write.table(te_frequencies_popC, file = "~/M2/Cafeier/Codes/Matrice_indv/TE_frequency_by_position_popC.txt", 
+              sep = "\t", quote = FALSE, row.names = FALSE)
+  # Analyser les résultats
+  statsC <- analyze_te_frequencies(te_frequencies_popC)
+
+
+### Pour Gypsy ###
+# Calculer les fréquences
+Gypsy_frequencies_popC <- calculate_te_frequency(Indv_matrix_C_Gypsy)
+# Enregistrer les résultats dans un fichier
+write.table(Gypsy_frequencies_popC, file = "~/M2/Cafeier/Codes/Matrice_indv/Gypsy_frequency_by_position_popC.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statsC_Gypsy <- analyze_Gypsy_frequencies(Gypsy_frequencies_popC)
+
+
+
+
+### Pour Copia ###
+# Calculer les fréquences
+Copia_frequencies_popC <- calculate_te_frequency(Indv_matrix_C_Copia)
+# Enregistrer les résultats dans un fichier
+write.table(Copia_frequencies_popC, file = "~/M2/Cafeier/Codes/Matrice_indv/Copia_frequency_by_position_popC.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statsC_Copia <- analyze_Copia_frequencies(Copia_frequencies_popC)
+```
+
+#### D
+
+```{r}
+# Utilisation avec mes données : pop D
+# Calculer les fréquences
+te_frequencies_popD <- calculate_te_frequency(Indv_matrix_D)
+# Enregistrer les résultats dans un fichier
+write.table(te_frequencies_popD, file = "~/M2/Cafeier/Codes/Matrice_indv/TE_frequency_by_position_popD.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statsD <- analyze_te_frequencies(te_frequencies_popD)
+
+### Pour Gypsy ###
+# Calculer les fréquences
+Gypsy_frequencies_popD <- calculate_te_frequency(Indv_matrix_D_Gypsy)
+# Enregistrer les résultats dans un fichier
+write.table(Gypsy_frequencies_popD, file = "~/M2/Cafeier/Codes/Matrice_indv/Gypsy_frequency_by_position_popD.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statsD_Gypsy <- analyze_Gypsy_frequencies(Gypsy_frequencies_popD)
+
+
+
+
+### Pour Copia ###
+# Calculer les fréquences
+Copia_frequencies_popD <- calculate_te_frequency(Indv_matrix_D_Copia)
+# Enregistrer les résultats dans un fichier
+write.table(Copia_frequencies_popD, file = "~/M2/Cafeier/Codes/Matrice_indv/Copia_frequency_by_position_popD.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statsD_Copia <- analyze_Copia_frequencies(Copia_frequencies_popD)
+```
+
+#### OB
+
+```{r}
+# Utilisation avec mes données : pop D
+# Calculer les fréquences
+te_frequencies_popOB <- calculate_te_frequency(Indv_matrix_OB)
+# Enregistrer les résultats dans un fichier
+write.table(te_frequencies_popOB, file = "~/M2/Cafeier/Codes/Matrice_indv/TE_frequency_by_position_popOB.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statsOB <- analyze_te_frequencies(te_frequencies_popOB)
+
+
+
+### Pour Gypsy ###
+Gypsy_frequencies_popOB <- calculate_te_frequency(Indv_matrix_OB_Gypsy)
+# Enregistrer les résultats dans un fichier
+write.table(Gypsy_frequencies_popOB, file = "~/M2/Cafeier/Codes/Matrice_indv/Gypsy_frequency_by_position_popOB.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statsOB_Gypsy <- analyze_Gypsy_frequencies(Gypsy_frequencies_popOB)
+
+
+
+
+### Pour Copia ###
+# Calculer les fréquences
+Copia_frequencies_popOB <- calculate_te_frequency(Indv_matrix_OB_Copia)
+# Enregistrer les résultats dans un fichier
+write.table(Copia_frequencies_popOB, file = "~/M2/Cafeier/Codes/Matrice_indv/Copia_frequency_by_position_popOB.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statsOB_Copia <- analyze_Copia_frequencies(Copia_frequencies_popOB)
+```
+
+#### ER
+
+```{r}
+# Utilisation avec mes données : pop D
+# Calculer les fréquences
+te_frequencies_popER <- calculate_te_frequency(Indv_matrix_ER)
+# Enregistrer les résultats dans un fichier
+write.table(te_frequencies_popER, file = "~/M2/Cafeier/Codes/Matrice_indv/TE_frequency_by_position_popER.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statsER <- analyze_te_frequencies(te_frequencies_popER)
+
+
+
+
+### Pour Gypsy ###
+# Calculer les fréquences
+Gypsy_frequencies_popER <- calculate_te_frequency(Indv_matrix_ER_Gypsy)
+# Enregistrer les résultats dans un fichier
+write.table(Gypsy_frequencies_popER, file = "~/M2/Cafeier/Codes/Matrice_indv/Gypsy_frequency_by_position_popER.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statsER_Gypsy <- analyze_Gypsy_frequencies(Gypsy_frequencies_popER)
+
+
+
+
+### Pour Copia ###
+# Calculer les fréquences
+Copia_frequencies_popER <- calculate_te_frequency(Indv_matrix_ER_Copia)
+# Enregistrer les résultats dans un fichier
+write.table(Copia_frequencies_popER, file = "~/M2/Cafeier/Codes/Matrice_indv/Copia_frequency_by_position_popER.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statsER_Copia <- analyze_Copia_frequencies(Copia_frequencies_popER)
+```
+
+#### hb
+
+```{r}
+# Utilisation avec mes données : pop D
+# Calculer les fréquences
+te_frequencies_pophb <- calculate_te_frequency(Indv_matrix_hb)
+# Enregistrer les résultats dans un fichier
+write.table(te_frequencies_pophb, file = "~/M2/Cafeier/Codes/Matrice_indv/TE_frequency_by_position_pophb.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statshb <- analyze_te_frequencies(te_frequencies_pophb)
+
+
+
+### Pour Gypsy ###
+# Calculer les fréquences
+Gypsy_frequencies_pophb <- calculate_te_frequency(Indv_matrix_hb_Gypsy)
+# Enregistrer les résultats dans un fichier
+write.table(Gypsy_frequencies_pophb, file = "~/M2/Cafeier/Codes/Matrice_indv/Gypsy_frequency_by_position_pophb.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statshb_Gypsy <- analyze_Gypsy_frequencies(Gypsy_frequencies_pophb)
+
+
+
+
+### Pour Copia ###
+# Calculer les fréquences
+Copia_frequencies_pophb <- calculate_te_frequency(Indv_matrix_hb_Copia)
+# Enregistrer les résultats dans un fichier
+write.table(Copia_frequencies_pophb, file = "~/M2/Cafeier/Codes/Matrice_indv/Copia_frequency_by_position_pophb.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statshb_Copia <- analyze_Copia_frequencies(Copia_frequencies_pophb)
+```
+
+#### V
+
+```{r}
+# Utilisation avec mes données : pop D
+# Calculer les fréquences
+te_frequencies_popV <- calculate_te_frequency(Indv_matrix_V)
+# Enregistrer les résultats dans un fichier
+write.table(te_frequencies_popV, file = "~/M2/Cafeier/Codes/Matrice_indv/TE_frequency_by_position_popV.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statsV <- analyze_te_frequencies(te_frequencies_popV)
+
+
+
+### Pour Gypsy ###
+# Calculer les fréquences
+Gypsy_frequencies_popV <- calculate_te_frequency(Indv_matrix_V_Gypsy)
+# Enregistrer les résultats dans un fichier
+write.table(Gypsy_frequencies_popV, file = "~/M2/Cafeier/Codes/Matrice_indv/Gypsy_frequency_by_position_popV.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statsV_Gypsy <- analyze_Gypsy_frequencies(Gypsy_frequencies_popV)
+
+
+
+
+### Pour Copia ###
+# Calculer les fréquences
+Copia_frequencies_popV <- calculate_te_frequency(Indv_matrix_V_Copia)
+# Enregistrer les résultats dans un fichier
+write.table(Copia_frequencies_popV, file = "~/M2/Cafeier/Codes/Matrice_indv/Copia_frequency_by_position_popV.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+# Analyser les résultats
+statsV_Copia <- analyze_Copia_frequencies(Copia_frequencies_popV)
+
+```
+
+## Fréquences par chromosome par fenètres 1Mb
+
+### Par famille TEs
+
+```{r}
+setwd("~/M2/Cafeier/Codes/Matrice_indv/freq")
+
+# Filtrer pour ne garder que les superfamilles RLG et RLC
+data_LTR <- data %>% 
+  filter(Superfamily %in% c("RLG", "RLC"))
+
+# Extraire le numéro de chromosome à partir de la colonne CHROM, avec le charabia autour :3
+data_LTR$chromosome <- gsub(".*Chr(\\d+).*", "\\1", data_LTR$CHROM)
+data_LTR$chromosome <- as.numeric(data_LTR$chromosome)
+
+# Fenêtres de 1Mb
+data_LTR$window <- ceiling(data_LTR$POS / 1000000)
+
+# Créer un identifiant unique pour chaque fenêtre
+data_LTR$window_id <- paste0("Chr", data_LTR$chromosome, "_", data_LTR$window, "Mb")
+
+# Calculer les fréquences alléliques par fenêtre et par famille pour chaque population
+calculate_allele_freq_by_population <- function(pop_ids, data_subset) {
+  # Filtrer les colonnes correspondant à cette population
+  pop_cols <- intersect(pop_ids, colnames(data_subset))
+  
+  # Pour les données diploïdes: calculer le nombre total d'allèles pour chaque insertion
+  # Pour chaque individu: 0=0 allèles/abs de TE, 1=1 allèle/hétérozygote TE, 2=2allèles homozygote TEs :
+  data_subset$total_alleles <- rowSums(data_subset[, pop_cols, drop = FALSE])
+  
+  # Calculer le nombre maximum d'allèles possibles (2 par individu non-NA, on prend l'inverse de ce qui nous interesse, ici tout ce qui n'est pas Na, il va sommer les 0+1+2 donnant le nb de TEs par famille traitée)
+  data_subset$max_alleles <- 2 * rowSums(!is.na(data_subset[, pop_cols, drop = FALSE]))
+  
+  # Calculer la fréquence allélique (nombre d'allèles / nombre max d'allèles)
+  data_subset$allele_freq <- data_subset$total_alleles / data_subset$max_alleles
+  
+  # Remplacer NaN par 0 (si aucun individu n'a de données)
+  data_subset$allele_freq[is.nan(data_subset$allele_freq)] <- 0
+  
+  return(data_subset)
+}
+
+# Créer des listes pour stocker les résultats
+results_by_pop <- list()
+populations_list <- list(
+  AG = pop_AG,
+  C = pop_C,
+  D = pop_D,
+  hb = pop_hb,
+  ER = pop_ER,
+  OB = pop_OB,
+  V = pop_V
+)
+
+# Calculer les fréquences pour chaque population avec notre fonction
+for(pop_name in names(populations_list)) {
+  results_by_pop[[pop_name]] <- calculate_allele_freq_by_population(
+    populations_list[[pop_name]], 
+    data_LTR
+  )
+}
+
+# Agréger les résultats par fenêtre et par famille pour chaque population
+results_aggregated <- list()
+
+for(pop_name in names(results_by_pop)) {
+  if(!is.null(results_by_pop[[pop_name]])) {
+    results_aggregated[[pop_name]] <- results_by_pop[[pop_name]] %>%
+      group_by(chromosome, window, window_id, Superfamily, Family) %>%
+      summarize(
+        count = n(),
+        mean_allele_freq = mean(allele_freq, na.rm = TRUE),
+        .groups = "drop"
+      )
+  }
+}
+
+# Fonction pour écrire les résultats dans des fichiers+afficher...
+for (pop_name in names(results_aggregated)) {
+  if (!is.null(results_aggregated[[pop_name]])) {
+    # Chemin du fichier de sortie
+    output_file <- paste0("~/M2/Cafeier/Codes/Matrice_indv/freq/results_", pop_name, ".txt")
+    
+    # Enregistrement sur disque
+    write.table(
+      results_aggregated[[pop_name]],
+      file = output_file,
+      sep = "\t",
+      quote = FALSE,
+      row.names = FALSE
+    )
+    
+    # Affichage dans le terminal
+    cat("\n--- Résultats pour la population:", pop_name, "---\n")
+    print(results_aggregated[[pop_name]])
+  }
+}
+
+
+#  visus
+library(ggplot2)
+
+# Pour une population spécifique, créer des graphiques pour tous les chromosomes
+create_chromosome_plots <- function(pop_name, results) {
+  # Obtenir la liste des chromosomes disponibles
+  chromosomes <- unique(results[[pop_name]]$chromosome)
+  
+  for(chr in chromosomes) {
+    chr_data <- results[[pop_name]] %>%
+      filter(chromosome == chr)
+    
+    if(nrow(chr_data) > 0) {
+      # Créer un graphique pour RLG (Gypsy)
+      rlg_data <- chr_data %>% filter(Superfamily == "RLG")
+      if(nrow(rlg_data) > 0) {
+        p_rlg <- ggplot(rlg_data, aes(x = window, y = log10(mean_allele_freq), color = Family)) +
+          geom_point(size = 1, alpha = 0.7) +
+          geom_line(aes(group = Family)) +
+          labs(
+            title = paste0("Fréquence des familles Gypsy par fenêtre de 1Mb - Chr", chr, " (", pop_name, ")"),
+            x = "Fenêtre (Mb)",
+            y = "log10(Fréquence allélique moyenne)",
+            color = "Famille TEs"
+          ) +
+          theme_bw() +
+          theme(legend.position = "right")+
+  scale_color_viridis_d(option = "plasma") 
+          #ggsave(paste0("TE_frequency_Chr", chr, "_", pop_name, "_RLG.pdf"), 
+         #      plot = p_rlg, width = 12, height = 8)
+        print(p_rlg)
+      }
+      
+      # Créer un graphique pour RLC (Copia)
+      rlc_data <- chr_data %>% filter(Superfamily == "RLC")
+      if(nrow(rlc_data) > 0) {
+        p_rlc <- ggplot(rlc_data, aes(x = window, y = log10(mean_allele_freq), color = Family)) +
+          geom_point(size = 1, alpha = 0.7) +
+          geom_line(aes(group = Family)) +
+          labs(
+            title = paste0("Fréquence des familles Copia par fenêtre de 1Mb - Chr", chr, " (", pop_name, ")"),
+            x = "Fenêtre (Mb)",
+            y = "log10(Fréquence allélique moyenne)",
+            color = "Famille TEs"
+          ) +
+          theme_bw() +
+          theme(legend.position = "right") +
+  scale_color_viridis_d(option = "viridis") 
+        #ggsave(paste0("TE_frequency_Chr", chr, "_", pop_name, "_RLC.pdf"), 
+         #      plot = p_rlc, width = 12, height = 8)
+        
+        print(p_rlc)
+      }
+    }
+  }
+}
+
+# graphiques pour chaque population
+for(pop_name in names(results_aggregated)) {
+  create_chromosome_plots(pop_name, results_aggregated)
+}
+```
+
+### Par Superfamille Gypsy et copia
+
+```{r}
+# Créer un graphique combiné pour Gypsy et Copia par chromosome
+create_combined_plots <- function(pop_name, results) {
+  # Obtenir la liste des chromosomes disponibles
+  chromosomes <- unique(results[[pop_name]]$chromosome)
+  
+  for(chr in chromosomes) {
+    chr_data <- results[[pop_name]] %>%
+      filter(chromosome == chr)
+    
+      # Agréger les données par superfamille et fenêtre
+      combined_data <- chr_data %>%
+        group_by(window, Superfamily) %>%
+        summarize(
+          mean_freq = mean(mean_allele_freq, na.rm = TRUE),
+          .groups = "drop"
+        )
+      
+      # Créer le graphique combiné
+      p_combined <- ggplot(combined_data, aes(x = window, y = log10(mean_freq), color = Superfamily)) +
+        geom_point(size = 2, alpha = 0.8) +
+        geom_line(linewidth = 1) +
+        labs(
+          title = paste0("Fréquence moyenne des superfamilles Gypsy et Copia par fenêtre de 1Mb - Chr", chr, " (", pop_name, ")"),
+          x = "Fenêtre (Mb)",
+          y = "log10(Fréquence allélique moyenne)",
+          color = "Superfamille"
+        ) +
+        theme_bw() +
+        theme(legend.position = "top") +
+        scale_color_manual(values = c("RLC" = "#FFA07A", "RLG" = "#63C5B8"), 
+                          labels = c("RLC" = "Copia", "RLG" = "Gypsy")) 
+      #+    ylim(0, 1)  # Fixer l'axe y entre 0 et 1
+      
+      print(p_combined)
+      
+      # Option pour sauvegarder le graphique
+      # ggsave(paste0("TE_superfamily_Chr", chr, "_", pop_name, ".pdf"), 
+      #       plot = p_combined, width = 10, height = 6)
+  }
+}
+
+# graphiques pour chaque population
+for(pop_name in names(results_aggregated)) {
+  create_combined_plots(pop_name, results_aggregated)
+}
+```
+
+### Tests stat : Wilcoxon + correction de Bonferroni
+
+La correction de Bonferroni permet de contrôler le taux d'erreur de type I (faux positifs) lorsqu'on réalise de multiples tests (Ajustement du seuil de significativité en divisant 0,05 par le nombre de tests). Elle réduit les faux positifs mais augmente le risque de faux négatifs, surtout avec un grand nombre de tests. Il est important de prendre tout de même en compte les pvalues avant correction dans l'interprétation si elles ne sont plus significatives après correction. d'autres méthodes existent :La correction de Benjamini-Hochberg (contrôle du taux de faux positifs) et la correction de Holm-Bonferroni (moins stricte que Bonferroni mais contrôle aussi le taux d'erreur familial).
+
+#### Fonctions
+
+```{r}
+# Fonction pour tester les différences entre Gypsy et Copia avec correction de Bonferroni
+test_superfamily_differences <- function(results) {
+  test_results <- list()
+  
+  for(pop_name in names(results)) {
+    cat("\n=== Tests pour la population", pop_name, "===\n")
+    
+    pop_data <- results[[pop_name]]
+    
+    # 1. Test global entre Gypsy et Copia
+    superfamily_data <- pop_data %>%
+      group_by(window_id, Superfamily) %>%
+      summarize(mean_freq = mean(mean_allele_freq, na.rm = TRUE),
+                .groups = "drop")
+    
+    wilcox_test <- wilcox.test(
+      mean_freq ~ Superfamily, 
+      data = superfamily_data, 
+      exact = FALSE
+    )
+    
+    cat("Test de Wilcoxon global entre Gypsy (RLG) et Copia (RLC):\n")
+    cat("p-value =", wilcox_test$p.value, "\n")
+    cat("Significatif à 5% =", wilcox_test$p.value < 0.05, "\n\n")
+    
+    # 2. Tests par chromosome
+    chromosomes <- unique(pop_data$chromosome)
+    n_tests <- length(chromosomes)  # Nombre de tests pour la correction de Bonferroni
+    
+    cat("Tests par chromosome entre Gypsy (RLG) et Copia (RLC):\n")
+    cat("Correction de Bonferroni appliquée: seuil ajusté à", 0.05/n_tests, "\n\n")
+    
+    chr_results <- data.frame(
+      Chromosome = integer(),
+      P_Value = numeric(),
+      Significant_Uncorrected = logical(),
+      Significant_Bonferroni = logical(),
+      Mean_Diff = numeric()
+    )
+    
+    for(chr in chromosomes) {
+      chr_data <- pop_data %>%
+        filter(chromosome == chr) %>%
+        group_by(window, Superfamily) %>%
+        summarize(mean_freq = mean(mean_allele_freq, na.rm = TRUE),
+                  .groups = "drop")
+      
+      means <- chr_data %>%
+        group_by(Superfamily) %>%
+        summarize(mean = mean(mean_freq, na.rm = TRUE),
+                  .groups = "drop")
+      
+      rlg_mean <- means$mean[means$Superfamily == "RLG"]
+      rlc_mean <- means$mean[means$Superfamily == "RLC"]
+      mean_diff <- rlg_mean - rlc_mean
+      
+      wilcox_result <- tryCatch({
+        test <- wilcox.test(
+          mean_freq ~ Superfamily, 
+          data = chr_data, 
+          exact = FALSE
+        )
+        test$p.value
+      }, error = function(e) {
+        NA
+      })
+      
+      # Déterminer la significativité avec et sans correction
+      sig_uncorrected <- !is.na(wilcox_result) && wilcox_result < 0.05
+      sig_bonferroni <- !is.na(wilcox_result) && wilcox_result < (0.05/n_tests)
+      
+      chr_results <- rbind(chr_results, data.frame(
+        Chromosome = chr,
+        P_Value = wilcox_result,
+        Significant_Uncorrected = sig_uncorrected,
+        Significant_Bonferroni = sig_bonferroni,
+        Mean_Diff = mean_diff
+      ))
+    }
+    
+    print(chr_results)
+    
+    test_results[[pop_name]] <- list(
+      global_test = wilcox_test,
+      chromosome_tests = chr_results,
+      bonferroni_threshold = 0.05/n_tests
+    )
+  }
+  
+  return(test_results)
+}
+```
+
+```{r}
+# Fonction pour comparer les chromosomes deux à deux avec correction de Bonferroni
+compare_chromosomes <- function(results) {
+  comparison_results <- list()
+  
+  for(pop_name in names(results)) {
+    cat("\n=== Comparaisons entre chromosomes pour la population", pop_name, "===\n")
+    
+    pop_data <- results[[pop_name]]
+    chromosomes <- unique(pop_data$chromosome)
+    
+    n_chr <- length(chromosomes)
+    n_tests <- (n_chr * (n_chr - 1)) / 2  # Nombre de tests pour la correction de Bonferroni
+    
+    cat("Correction de Bonferroni appliquée: seuil ajusté à", 0.05/n_tests, "\n\n")
+    
+    p_values_matrix <- matrix(NA, nrow = n_chr, ncol = n_chr)
+    rownames(p_values_matrix) <- paste0("Chr", chromosomes)
+    colnames(p_values_matrix) <- paste0("Chr", chromosomes)
+    
+    # Matrice pour stocker les résultats de significativité après correction
+    sig_matrix <- matrix(NA, nrow = n_chr, ncol = n_chr)
+    rownames(sig_matrix) <- paste0("Chr", chromosomes)
+    colnames(sig_matrix) <- paste0("Chr", chromosomes)
+    
+    for(i in 1:(n_chr-1)) {
+      for(j in (i+1):n_chr) {
+        chr_i <- chromosomes[i]
+        chr_j <- chromosomes[j]
+        
+        data_i <- pop_data %>% 
+          filter(chromosome == chr_i) %>%
+          group_by(window, Superfamily) %>%
+          summarize(mean_freq = mean(mean_allele_freq, na.rm = TRUE),
+                    .groups = "drop")
+        
+        data_j <- pop_data %>% 
+          filter(chromosome == chr_j) %>%
+          group_by(window, Superfamily) %>%
+          summarize(mean_freq = mean(mean_allele_freq, na.rm = TRUE),
+                    .groups = "drop")
+        
+        mean_i <- mean(data_i$mean_freq, na.rm = TRUE)
+        mean_j <- mean(data_j$mean_freq, na.rm = TRUE)
+        
+        data_combined <- rbind(
+          data.frame(data_i, chr = factor(chr_i)),
+          data.frame(data_j, chr = factor(chr_j))
+        )
+        
+        test_result <- tryCatch({
+          test <- wilcox.test(
+            mean_freq ~ chr, 
+            data = data_combined
+          )
+          test$p.value
+        }, error = function(e) {
+          NA
+        })
+        
+        # Déterminer la significativité après correction
+        sig_bonferroni <- !is.na(test_result) && test_result < (0.05/n_tests)
+        
+        p_values_matrix[i, j] <- test_result
+        p_values_matrix[j, i] <- test_result
+        
+        sig_matrix[i, j] <- sig_bonferroni
+        sig_matrix[j, i] <- sig_bonferroni
+        
+        cat(sprintf("Chr%d vs Chr%d: p-value = %.4f (moyennes: %.4f vs %.4f) - Sig. après Bonferroni: %s\n", 
+                    chr_i, chr_j, test_result, mean_i, mean_j, 
+                    ifelse(sig_bonferroni, "OUI", "NON")))
+      }
+    }
+    
+    comparison_results[[pop_name]] <- list(
+      p_values = p_values_matrix,
+      significance = sig_matrix,
+      bonferroni_threshold = 0.05/n_tests
+    )
+    
+    cat("\nMatrice des p-values pour les comparaisons entre chromosomes:\n")
+    print(p_values_matrix)
+    
+    cat("\nComparaisons significatives après correction de Bonferroni (p < ", 0.05/n_tests, "):\n", sep="")
+    sig_count <- 0
+    for(i in 1:(n_chr-1)) {
+      for(j in (i+1):n_chr) {
+        if(sig_matrix[i, j]) {
+          cat(sprintf("%s vs %s: p = %.4f\n", 
+                      rownames(p_values_matrix)[i], 
+                      colnames(p_values_matrix)[j], 
+                      p_values_matrix[i, j]))
+          sig_count <- sig_count + 1
+        }
+      }
+    }
+    
+    if(sig_count == 0) {
+      cat("Aucune comparaison significative après correction de Bonferroni.\n")
+    }
+  }
+  
+  return(comparison_results)
+}
+```
+
+```{r}
+# Fonction pour comparer les populations avec correction de Bonferroni
+compare_populations <- function(results) {
+  populations <- names(results)
+  n_pop <- length(populations)
+  
+  pop_comparison_results <- list()
+  
+  for(i in 1:(n_pop-1)) {
+    for(j in (i+1):n_pop) {
+      pop_i <- populations[i]
+      pop_j <- populations[j]
+      
+      cat(sprintf("\n=== Comparaison entre populations %s et %s ===\n", pop_i, pop_j))
+      
+      chr_i <- unique(results[[pop_i]]$chromosome)
+      chr_j <- unique(results[[pop_j]]$chromosome)
+      common_chr <- intersect(chr_i, chr_j)
+      
+      # Nombre total de tests: nombre de chromosomes × nombre de superfamilles
+      n_tests <- length(common_chr) * 2  # 2 superfamilles (RLG, RLC)
+      
+      cat("Correction de Bonferroni appliquée: seuil ajusté à", 0.05/n_tests, "\n\n")
+      
+      chr_results <- data.frame(
+        Chromosome = integer(),
+        Superfamily = character(),
+        P_Value = numeric(),
+        Significant_Uncorrected = logical(),
+        Significant_Bonferroni = logical(),
+        Mean_Diff = numeric()
+      )
+      
+      for(chr in common_chr) {
+        cat(sprintf("\nChromosome %d:\n", chr))
+        
+        for(sf in c("RLG", "RLC")) {
+          data_i <- results[[pop_i]] %>%
+            filter(chromosome == chr, Superfamily == sf) %>%
+            group_by(window) %>%
+            summarize(mean_freq = mean(mean_allele_freq, na.rm = TRUE),
+                      .groups = "drop")
+          
+          data_j <- results[[pop_j]] %>%
+            filter(chromosome == chr, Superfamily == sf) %>%
+            group_by(window) %>%
+            summarize(mean_freq = mean(mean_allele_freq, na.rm = TRUE),
+                      .groups = "drop")
+          
+          mean_i <- mean(data_i$mean_freq, na.rm = TRUE)
+          mean_j <- mean(data_j$mean_freq, na.rm = TRUE)
+          mean_diff <- mean_i - mean_j
+          
+          data_combined <- rbind(
+            data.frame(data_i, pop = factor(pop_i)),
+            data.frame(data_j, pop = factor(pop_j))
+          )
+          
+          test_result <- tryCatch({
+            test <- wilcox.test(
+              mean_freq ~ pop, 
+              data = data_combined,
+              paired = FALSE
+            )
+            test$p.value
+          }, error = function(e) {
+            NA
+          })
+          
+          # Déterminer la significativité avec et sans correction
+          sig_uncorrected <- !is.na(test_result) && test_result < 0.05
+          sig_bonferroni <- !is.na(test_result) && test_result < (0.05/n_tests)
+          
+          cat(sprintf("  %s: p-value = %.4f (moyennes: %.4f vs %.4f) - Sig. après Bonferroni: %s\n", 
+                     sf, test_result, mean_i, mean_j, 
+                     ifelse(sig_bonferroni, "OUI", "NON")))
+          
+          chr_results <- rbind(chr_results, data.frame(
+            Chromosome = chr,
+            Superfamily = sf,
+            P_Value = test_result,
+            Significant_Uncorrected = sig_uncorrected,
+            Significant_Bonferroni = sig_bonferroni,
+            Mean_Diff = mean_diff
+          ))
+        }
+      }
+      
+      pop_comparison_results[[paste(pop_i, pop_j, sep = "_vs_")]] <- list(
+        results = chr_results,
+        bonferroni_threshold = 0.05/n_tests
+      )
+      
+      cat("\nRésumé des comparaisons significatives après correction de Bonferroni:\n")
+      sig_results <- chr_results[chr_results$Significant_Bonferroni, ]
+      if(nrow(sig_results) > 0) {
+        print(sig_results)
+      } else {
+        cat("Aucune différence significative après correction de Bonferroni.\n")
+      }
+    }
+  }
+  
+  return(pop_comparison_results)
+}
+```
+
+```{r}
+# Fonction afin de visualiser les résultats des tests avec correction de Bonferroni
+visualize_test_results <- function(test_results, pop_name) {
+  chr_tests <- test_results[[pop_name]]$chromosome_tests
+  bonferroni_threshold <- test_results[[pop_name]]$bonferroni_threshold
+  
+  # Graphique montrant les p-values par chromosome avec indication des seuils de significativité
+  p_pvalues <- ggplot(chr_tests, aes(x = factor(Chromosome), y = P_Value)) +
+    geom_bar(stat = "identity", fill = ifelse(chr_tests$Significant_Bonferroni, "darkred", 
+                                             ifelse(chr_tests$Significant_Uncorrected, "orange", "grey"))) +
+    geom_hline(yintercept = 0.05, linetype = "dashed", color = "blue", 
+               linewidth = 0.8) +
+    geom_hline(yintercept = bonferroni_threshold, linetype = "dashed", color = "red", 
+               linewidth = 0.8) +
+    annotate("text", x = 1, y = 0.05 + 0.02, label = "p = 0.05", 
+             hjust = 0, color = "blue") +
+    annotate("text", x = 1, y = bonferroni_threshold + 0.02, 
+             label = paste("p =", round(bonferroni_threshold, 4), "(Bonferroni)"), 
+             hjust = 0, color = "darkred") +
+    labs(
+      title = paste0("P-values des tests Gypsy vs Copia par chromosome - ", pop_name),
+      subtitle = "Rouge: significatif après correction de Bonferroni, Orange: significatif sans correction",
+      x = "Chromosome",
+      y = "P-value"
+    ) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  # Graphique montrant les différences de moyennes
+  p_diffs <- ggplot(chr_tests, aes(x = factor(Chromosome), y = Mean_Diff, 
+                                  fill = factor(Significant_Bonferroni + Significant_Uncorrected))) +
+    geom_bar(stat = "identity") +
+    geom_hline(yintercept = 0, linetype = "dashed") +
+    labs(
+      title = paste0("Différence de fréquence moyenne (Gypsy - Copia) par chromosome - ", pop_name),
+      subtitle = "Coloration selon la significativité statistique",
+      x = "Chromosome",
+      y = "Différence de fréquence"
+    ) +
+    scale_fill_manual(values = c("0" = "grey", "1" = "orange", "2" = "darkred"),
+                      labels = c("0" = "Non significatif", 
+                                "1" = "Significatif sans correction", 
+                                "2" = "Significatif après Bonferroni"),
+                      name = "Significativité") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  # Afficher les graphiques
+  print(p_pvalues)
+  print(p_diffs)
+  
+  return(list(p_values = p_pvalues, differences = p_diffs))
+}
+```
+
+```{r}
+# Fonction pour visualiser les résultats des comparaisons entre chromosomes
+visualize_chromosome_comparisons <- function(comparison_results, pop_name) {
+  p_values <- comparison_results[[pop_name]]$p_values
+  significance <- comparison_results[[pop_name]]$significance
+  
+  # Convertir les matrices en dataframes pour ggplot
+  n_chr <- nrow(p_values)
+  chr_pairs <- data.frame(
+    Chr1 = character(),
+    Chr2 = character(),
+    P_Value = numeric(),
+    Significant = logical()
+  )
+  
+  for(i in 1:(n_chr-1)) {
+    for(j in (i+1):n_chr) {
+      chr_pairs <- rbind(chr_pairs, data.frame(
+        Chr1 = rownames(p_values)[i],
+        Chr2 = colnames(p_values)[j],
+        P_Value = p_values[i, j],
+        Significant = significance[i, j]
+      ))
+    }
+  }
+  
+  # Graphique des p-values pour les comparaisons entre chromosomes
+  p <- ggplot(chr_pairs, aes(x = Chr1, y = Chr2, fill = P_Value)) +
+    geom_tile() +
+    geom_text(aes(label = ifelse(is.na(P_Value), "", 
+                                sprintf("%.3f", P_Value))), 
+              color = ifelse(chr_pairs$Significant, "white", "black")) +
+    scale_fill_gradient2(low = "darkred", mid = "orange", high = "lightblue", 
+                        midpoint = 0.025, na.value = "white",
+                        limits = c(0, 0.05), oob = scales::squish) +
+    labs(
+      title = paste0("P-values des comparaisons entre chromosomes - ", pop_name),
+      subtitle = paste0("Correction de Bonferroni: seuil à ", 
+                       round(comparison_results[[pop_name]]$bonferroni_threshold, 4)),
+      x = "Chromosome",
+      y = "Chromosome",
+      fill = "P-value"
+    ) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  print(p)
+  
+  return(p)
+}
+```
+
+```{r}
+# Exécuter les tests avec correction de Bonferroni
+superfamily_test_results <- test_superfamily_differences(results_aggregated) # Réalise des tests de Wilcoxon pour comparer les distributions de fréquences alléliques entre Gypsy et Copia: pour toute la population & individuels pour chaque chromosome
+chromosome_comparison_results <- compare_chromosomes(results_aggregated) # Compare tous les chromosomes deux à deux pour chaque population en utilisant également des tests de Wilcoxon, et présente les résultats sous forme de matrice de p-values
+population_comparison_results <- compare_populations(results_aggregated)
+
+# Visualiser les résultats pour une population
+first_pop <- names(results_aggregated)[1]
+test_plots <- visualize_test_results(superfamily_test_results, first_pop)
+comparison_plot <- visualize_chromosome_comparisons(chromosome_comparison_results, first_pop)
+```

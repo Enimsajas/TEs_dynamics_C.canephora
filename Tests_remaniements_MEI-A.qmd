@@ -1,0 +1,4105 @@
+---
+title: "Tests_remaniements_MEI-A"
+format: html
+editor: visual
+---
+
+
+# Coller MEI et MEA (=ME) github MEGAnE
+
+Pour fusionner ces deux ensembles d'appels et supprimer les variantes multi-alléliques d'éléments mobiles.
+
+```{bash}
+sif=/shared/projects/te_coffea/BAM_files_processed/MEGAnE.sif
+
+singularity exec ${sif} reshape_vcf \
+-i /shared/projects/te_coffea/test_MEI_jointcall.vcf \
+-a /shared/projects/te_coffea/test_MEA_jointcall.vcf \
+-cohort_name test
+
+
+singularity exec /shared/projects/te_coffea/BAM_files_processed/MEGAnE.sif reshape_vcf \
+-i /shared/projects/te_coffea/test_MEI_jointcall.vcf \
+-a /shared/projects/te_coffea/test_MEA_jointcall.vcf \
+-cohort_name test
+# Multi-allelic ME removal finished. Please see: ./vcf_for_phasing/test_biallelic.vcf.gz
+# 6 fichiers sont créés : multiallelic_ME_summary.log  test_biallelic.vcf.gz      test_MEI_biallelic.vcf.gz test_biallelic.bed.gz        test_MEA_biallelic.vcf.gz
+
+```
+
+on obtient ce genre d'infos :
+
+CC1.8.Chr01 42389341 test_ins_10279 GAAAAATTCACCAATCTCAACCCAATTCAAGAAATCTTTCACCC <INS:ME> . M SVTYPE=LTR;MEI=CC1.8.Chr10_48519064_48530366;MEPRED=PASS;0START=42389341;0END=42389384;SVLEN=NA;MESTRAND=+;AC=16 GT 0/0 0/0 0/0 0/. 0/0 0/0 0/0 0/. 0/0 0/0 0/0 0/0 0/0 0/0 0/. 0/. 0/0 0/0 0/0 0/0 0/. 0/1 0/. 0/0 0/0 0/0 0/0 0/. 0/. 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/. 0/. 0/. 0/0 0/0 0/0 0/. 0/0 0/0 0/0 0/. 0/. 0/. 0/1 0/0 0/0 0/0 0/0 0/0 0/0 0/1 0/. 0/0 0/0 0/0 0/. 0/1 0/1 0/0 0/. 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/. 0/. 0/0 0/1 0/1 0/. 0/1 0/. 0/1 0/. 0/0 0/. 0/1 0/0 0/0 0/. 0/. 0/0 0/0 0/1 0/0 0/0 0/. 0/1 0/0 0/0 0/. 0/0 0/0 0/. 0/0 0/0 0/0 0/. 0/1 0/. 0/. 0/0 0/. 0/1 0/1 0/1 0/. 0/0 0/0 0/.
+
+## Matrice par individus des infos ME (sur MEI et MEA combinés)
+
+```{bash}
+vcftools --gzvcf /shared/projects/te_coffea/vcf_for_phasing/test_biallelic.vcf.gz --remove-filtered-all --012 --out Tests_TEs/Matrice_indv/test_012_filtered
+```
+
+**--012** This option outputs the genotypes as a large matrix. Three files are produced. The first, with suffix ".012", contains the genotypes of each individual on a separate line. Genotypes are represented as 0, 1 and 2, where the number represent that number of non-reference alleles. Missing genotypes are represented by -1. The second file, with suffix ".012.indv" details the individuals included in the main file. The third file, with suffix ".012.pos" details the site locations included in the main file
+
+Sortie de trois fichiers :
+
+-   `test_012_filtered.012` → Table de génotypes codée en 0, 1, 2 (absence/hétérozygotie/homozygotie).
+
+-   `test_012_filtered.012.indv` → Liste des individus (colonne 2 du VCF).
+
+-   `test_012_filtered.012.pos` → Liste des positions des variants : colonne 1 = chr et colonne 2 = positions
+
+Combiner les trois fichiers :
+
+```{r}
+# Importer les trois fichiers
+genotypes <- read.table("~/M2/Cafeier/Codes/Matrice_indv/test_012_filtered.012", header = FALSE)
+individuals <- read.table("~/M2/Cafeier/Codes/Matrice_indv/test_012_filtered.012.indv", header = FALSE)
+positions <- read.table("~/M2/Cafeier/Codes/Matrice_indv/test_012_filtered.012.pos", header = FALSE)
+
+# La première colonne du fichier .012 est un identifiant qu'on peut ignorer
+genotypes <- genotypes[,-1]
+
+# Transposer la matrice de génotypes
+genotypes_t <- t(genotypes)
+
+# Convertir en dataframe pour pouvoir ajouter les noms de lignes et colonnes
+genotypes_t <- as.data.frame(genotypes_t)
+
+# Ajouter les noms de colonnes (individus)
+colnames(genotypes_t) <- individuals$V1
+
+# Créer une colonne CHROM et POS à partir du dataframe positions
+positions_df <- data.frame(
+  CHROM = positions$V1,
+  POS = positions$V2
+)
+
+# Combiner les positions avec la matrice transposée
+merged_data <- cbind(positions_df, genotypes_t)
+```
+
+### Ajout des Infos TEs
+
+#### ME
+
+```{bash}
+# ex Yann
+vcftools --vcf subset_vcf_MEI_TE1.recode.vcf --get-INFO MEI --out test_yann_extractinfo
+
+# modifié
+vcftools --gzvcf test_biallelic.vcf.gz --get-INFO MEI --get-INFO SVLEN --get-INFO 0START --get-INFO 0END --get-INFO MESTRAND --remove-filtered-all --out /shared/projects/te_coffea/vcf_for_phasing/Infos_ME
+
+```
+
+head Infos_ME.INFO
+
+CHROM POS REF ALT MEI SVLEN 0START 0END MESTRAND
+
+CC1.8.Chr01 47943685 TTGTAGTCCAGCTAAACTATATACTATAGGAATATAG \<INS:ME\> TE_00002498 595 47943685 47943721 -
+
+CC1.8.Chr02 5109069 TATATATATATATATATATATATATATATATATATATTTATTTATT \<INS:ME\> TE_00002498 NA 5109069 5109114 +
+
+CC1.8.Chr03 7909366 TGTTAAA \<INS:ME\> TE_00002498 596 7909366 7909372 -
+
+CC1.8.Chr03 9075421 CATTTTTAA \<INS:ME\> TE_00002498 594 9075421 9075429 -
+
+CC1.8.Chr03 38917003 CATATAAATCG \<INS:ME\> TE_00002498 586 38917003 38917013 +
+
+```{r}
+# Importer le fichier d'informations sur les ME
+infos_ME <- read.table("~/M2/Cafeier/Codes/TEs/Infos_ME.INFO", header = TRUE)
+
+# Fusionner les deux dataframes sur CHROM et POS
+Indv_matrix_012 <- merge(merged_data, infos_ME, by = c("CHROM", "POS"), all.x = TRUE)
+
+# Vérifier le résultat
+dim(Indv_matrix_012)
+head(Indv_matrix_012)
+```
+
+Cependant la matrice contient les données pour les contigs que nous n'allons pas analyser ici, pour les enlever :
+
+```{r}
+# Voir quelles valeurs commençant par "Contig" existent dans le jeu de données
+unique_contigs <- unique(Indv_matrix_012$CHROM[grepl("^Contig", Indv_matrix_012$CHROM)])
+print(unique_contigs)
+
+# Filtrer pour exclure les lignes dont la colonne MEI commence par "Contig"
+Indv_matrix_012_filtered <- Indv_matrix_012[!grepl("^Contig", Indv_matrix_012$CHROM), ]
+head(Indv_matrix_012_filtered)
+```
+
+#### Inpactor (familles TEs)
+
+```{bash}
+# le fichier comprennant l'annotation des TEs, leur id que l'on retrouve dans le MEI-A ainsi que classe/superfamille/famille TEs identifiée avec INPACTOR se trouve dans Material for Megfane des datas de Kilian
+grep ">" /shared/projects/te_coffea/Material_for_MEGAnE/Inpactor2_library.fasta_curation_goodL_complete.faa_EDTA.cdhit | sed 's/^>//; s/--/\t/g; s/-/\t/g' > annotations_TEs_inpactor.txt
+```
+
+head annotations_TEs_inpactor.txt
+
+CC1.8.Chr02_2739213_2744118 LTR RLC BIANCA
+
+CC1.8.Chr02_4827093_4840456 LTR RLG TAT
+
+CC1.8.Chr02_6286507_6291788 LTR RLG REINA
+
+CC1.8.Chr02_8207619_8212960 LTR RLG REINA
+
+```{r}
+# Charger le fichier d'informations sur les éléments transposables
+te_info <- read.table("~/M2/Cafeier/Codes/TEs/annotations_TEs_inpactor.txt", 
+                      header = FALSE, 
+                      col.names = c("MEI", "Type", "Superfamily", "Family", "Line"),
+                      fill= T)
+# J'ai des valeurs Gypsy que je change en RLG dans la colonne Superfamily
+te_info$Superfamily[te_info$Superfamily == "Gypsy"] <- "RLG"
+
+# Vérifier la structure
+head(te_info)
+summary(te_info)
+
+
+# Fusionner avec le jeu de données filtré
+Indv_matrix_012_filtered_annot <- merge(Indv_matrix_012_filtered, te_info, by = "MEI", all.x = TRUE)
+
+# Vérifier le résultat
+head(Indv_matrix_012_filtered_annot)
+
+# enregistrer le doc
+write.table(Indv_matrix_012_filtered_annot, "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_annot.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+```
+
+Parfois, la colonne MEI contient plusieurs posibilités de mei TEs. J'ai alors :
+
+dans chaque ligne où le MEI contient plusieurs mei dans Indv_matrix_012_filtered_annot 1) enlevé les mei commencant par "Contig", 2) vérifié si chaque mei de la ligne fait référence au même "Type" et "Superfamily", 3) si c'est le cas gardé le premier mei de la ligne avec toutes les informations de la ligne et les informations "Type", "Superfamily", "Family", "Line" lui étant associées dans annotations_TEs_inpactor.txt, 4) si tous les mei de la ligne n'ont pas les meme "Type" et "Superfamily" assignés dans annotations_TEs_inpactor.txt, supprimé la ligne.
+
+```{r}
+# Chargement des bibliothèques
+library(dplyr)
+library(stringr)
+
+# Chargement des fichiers
+matrix_file <- "Indv_matrix_012_filtered_annot.txt"
+annotations_file <- "annotations_TEs_inpactor.txt"
+
+matrix_df <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_annot.txt", header=TRUE, sep="\t", stringsAsFactors = FALSE)
+
+# Charger le fichier d'informations sur les éléments transposables
+annotations_df <- read.table("~/M2/Cafeier/Codes/TEs/annotations_TEs_inpactor.txt", 
+                      header = FALSE, 
+                      col.names = c("MEI", "Type", "Superfamily", "Family", "Line"),
+                      fill= T, stringsAsFactors = FALSE)
+# J'ai des valeurs Gypsy que je change en RLG dans la colonne Superfamily
+annotations_df$Superfamily[annotations_df$Superfamily == "Gypsy"] <- "RLG"
+
+
+# Création d'un dictionnaire pour les annotations
+annotations_dict <- list()
+for (i in 1:nrow(annotations_df)) {
+  mei <- annotations_df$MEI[i]
+  annotations_dict[[mei]] <- list(
+    Type = annotations_df$Type[i],
+    Superfamily = annotations_df$Superfamily[i],
+    Family = annotations_df$Family[i],
+    Line = annotations_df$Line[i]
+  )
+}
+
+# Fonction pour traiter les MEI
+process_mei <- function(mei_string) {
+  if (!str_detect(mei_string, "\\|")) {
+    return(list(mei = mei_string, keep = TRUE))  # Aucun besoin de vérification si un seul MEI
+  }
+  
+  meis <- str_split(mei_string, "\\|")[[1]]
+  
+  # 1) Filtrer les MEI commençant par "Contig"
+  filtered_meis <- meis[!str_starts(meis, "Contig")]
+  
+  # Si aucun MEI ne reste après filtrage, on garde quand même le premier
+  if (length(filtered_meis) == 0) {
+    return(list(mei = meis[1], keep = TRUE))
+  }
+  
+  # 2) Vérifier si tous les MEI ont le même Type et Superfamily
+  types <- c()
+  superfamilies <- c()
+  
+  for (mei in filtered_meis) {
+    if (!is.null(annotations_dict[[mei]])) {
+      types <- c(types, annotations_dict[[mei]]$Type)
+      superfamilies <- c(superfamilies, annotations_dict[[mei]]$Superfamily)
+    } else {
+      # Si un MEI n'est pas dans les annotations, on le considère comme différent
+      return(list(mei = filtered_meis[1], keep = FALSE))
+    }
+  }
+  
+  # 3) Si tous les MEI ont le même Type et Superfamily
+  if (length(unique(types)) == 1 && length(unique(superfamilies)) == 1) {
+    return(list(mei = filtered_meis[1], keep = TRUE))
+  } else {
+    return(list(mei = filtered_meis[1], keep = FALSE))
+  }
+}
+
+# Traitement du dataframe
+result_rows <- list()
+row_count <- 0
+
+for (i in 1:nrow(matrix_df)) {
+  mei <- matrix_df$MEI[i]
+  result <- process_mei(mei)
+  first_mei <- result$mei
+  keep_row <- result$keep
+  
+  if (keep_row) {
+    row_count <- row_count + 1
+    # Copier la ligne originale
+    new_row <- matrix_df[i, ]
+    
+    # Mettre à jour le MEI avec seulement le premier MEI valide
+    new_row$MEI <- first_mei
+    
+    # Actualiser les informations de Type, Superfamily, Family si nécessaire
+    if (!is.null(annotations_dict[[first_mei]])) {
+      new_row$Type <- annotations_dict[[first_mei]]$Type
+      new_row$Superfamily <- annotations_dict[[first_mei]]$Superfamily
+      new_row$Family <- annotations_dict[[first_mei]]$Family
+      new_row$Line <- annotations_dict[[first_mei]]$Line
+    }
+    
+    result_rows[[row_count]] <- new_row
+  }
+}
+
+# Création du dataframe résultat
+result_df <- do.call(rbind, result_rows)
+
+# Sauvegarde du résultat
+output_file <- "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt"
+write.table(result_df, file = output_file, sep = "\t", row.names = FALSE, quote = FALSE)
+
+cat("Traitement terminé. Résultat sauvegardé dans", output_file, "\n")
+cat("Nombre de lignes dans le fichier original:", nrow(matrix_df), "\n")
+cat("Nombre de lignes dans le fichier filtré:", nrow(result_df), "\n")
+```
+
+### Populations de *Coffea canephora*
+
+Ancien doc
+
+
+Importation des news datas passeport !!! 17/03/25
+
+```{r}
+library(readxl)
+correspondance_indv_pops <- read_excel("~/M2/Cafeier/data_coffea/passeport-climatic_variables_af_viet.xlsx", 
+    sheet = "correspondances")
+
+library(tidyverse)
+colnames(correspondance_indv_pops) <- colnames(correspondance_indv_pops) %>%
+  str_replace_all("tram climate", "tram_climate") %>%
+  str_replace_all("Group analysis", "Group_analysis")
+
+correspondance_indv_pops <- correspondance_indv_pops %>%
+  mutate(Group_analysis = ifelse(is.na(Group_analysis) & continent == "Afr", "Unknown",
+                          ifelse(is.na(Group_analysis) & continent == "viet", "V", Group_analysis))) %>%
+  mutate_all(~ ifelse(is.na(.), "NA", .)) %>%  # Remplace les NA par "NA"
+  select(-Comments, -Name, -`bioProjet-PRJNA803612`)  # Supprime les colonnes
+
+
+
+write.table(correspondance_indv_pops, 
+            "~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", 
+            row.names = FALSE, col.names = T, quote = FALSE)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_AG <- correspondance_indv_pops$Bam[correspondance_indv_pops$Group_analysis %in% c("A", "G")]
+pop_C <- correspondance_indv_pops$Bam[correspondance_indv_pops$Group_analysis == "C"]
+pop_D <- correspondance_indv_pops$Bam[correspondance_indv_pops$Group_analysis == "D"]
+pop_hb <- correspondance_indv_pops$Bam[correspondance_indv_pops$Group_analysis == "hb"]
+pop_OB <- correspondance_indv_pops$Bam[correspondance_indv_pops$Group_analysis %in% c("B", "O")]
+pop_ER <- correspondance_indv_pops$Bam[correspondance_indv_pops$Group_analysis %in% c("E", "R")]
+pop_V <- correspondance_indv_pops$Bam[correspondance_indv_pops$Group_analysis == "V"]
+```
+
+Ici en comparaison navec la liste des individus utilisés par Kilian dans Megane
+
+```{r}
+# Liste des individus à comparer
+individus <- c("20135-NoIndex-L003-MERGED", "20159-NoIndex-L005-MERGED", "20511_NoIndex_L001-MERGED", 
+               "20650-NoIndex-L007-MERGED", "20658-NoIndex-L002-MERGED", "20708-NoIndex-L008-MERGED", 
+               "20723-NoIndex-L007-MERGED", "20731-NoIndex-L002-MERGED", "C-127", "C-133", "C-147", 
+               "C001-MERGED", "C002-MERGED", "C003-MERGED", "C004-MERGED", "C005-MERGED", "C006-MERGED", 
+               "C007-MERGED", "C008-MERGED", "C009-MERGED", "C010-MERGED", "C011-MERGED", "C012-MERGED", 
+               "C013-MERGED", "C014-MERGED", "C016-MERGED", "C017-MERGED", "C018-MERGED", "C019-MERGED", 
+               "C020-MERGED", "C021-MERGED", "C022-MERGED", "C023-MERGED", "C025-MERGED", "C026-MERGED", 
+               "C027-MERGED", "C029-MERGED", "C030-MERGED", "C031-MERGED", "C032-MERGED", "C033-MERGED", 
+               "C034-MERGED", "C035-MERGED", "C037-MERGED", "C038-MERGED", "C039-MERGED", "C040-MERGED", 
+               "C041-MERGED", "C042-MERGED", "C044-MERGED", "C045-MERGED", "C047-MERGED", "C403-Boim7-2LanesMerged", 
+               "C404-Briz2-2LanesMerged", "D-7", "D-8", "E100032897_L1_COFtwpgR108321-704", 
+               "E100032897_L1_COFtwpgR108322-705", "E100032897_L1_COFtwpgR108323-706", 
+               "E100033056_L1_COFpytlR112806-724", "E100033056_L1_COFpytlR112807-726", 
+               "E100033056_L1_COFpytlR112808-728", "E100033056_L1_COFpytlR112809-729", 
+               "E100033056_L1_COFpytlR112810-730", "E100033056_L1_COFpytlR112811-731", 
+               "E100033056_L1_COFpytlR112812-733", "E100033056_L1_COFpytlR112813-734", 
+               "E100033056_L1_COFpytlR112814-735", "E100033056_L1_COFpytlR112815-736", 
+               "E100033056_L1_COFpytlR112816-737", "E100033056_L1_COFpytlR112817-738", 
+               "E100033056_L1_COFpytlR112818-739", "E100033056_L1_COFpytlR112819-740", 
+               "E100033056_L1_COFpytlR112820-741", "E100033056_L1_COFpytlR112821-742", 
+               "E100033056_L1_COFpytlR112822-743", "E100033056_L1_COFpytlR112823-744", 
+               "E100033056_L1_COFpytlR112824-746", "E100033056_L1_COFpytlR112825-747", 
+               "E100033056_L1_COFpytlR112826-748", "E100033056_L1_COFpytlR112827-749", 
+               "E100033056_L1_COFpytlR112828-750", "E100033056_L1_COFpytlR112829-751", 
+               "E100033056_L1_COFpytlR112830-752", "E100033056_L1_COFpytlR112831-753", 
+               "E100033056_L1_COFpytlR112832-754", "E100033056_L1_COFpytlR112833-755", 
+               "E100033056_L1_COFpytlR112834-756", "E100033056_L1_COFpytlR112835-757", 
+               "E100033914_L1_COFphndR129154-638", "E100033914_L1_COFphndR129155-639", "J-18", 
+               "J-2", "J-22", "J-30", "J-9", "K4Y17Y2-NoIndex-L002-MERGED", "M1", "M2", "M3", "M4", 
+               "N-11", "N-37", "N-38", "N-39", "N-42", "N-5", "S-152", "S-157", "TR10m", "TR11m", 
+               "TR12m", "TR13m", "TR14m", "TR15m", "TR4m", "TR5m", "TR6m", "TR9m", "ZO16")
+
+# Trouver les individus présents dans la liste mais pas dans la colonne Bam
+individus_non_present_bam <- setdiff(individus, correspondance_indv_pops$Bam)
+
+# Trouver les individus présents dans la colonne Bam mais pas dans la liste
+individus_non_present_liste <- setdiff(correspondance_indv_pops$Bam, individus)
+
+# Afficher les résultats
+cat("Individus présents dans la liste mais pas dans la colonne Bam:\n")
+print(individus_non_present_bam)
+
+cat("\nIndividus présents dans la colonne Bam mais pas dans la liste:\n")
+print(individus_non_present_liste)
+
+```
+
+#### Filtrer la matrice des individus par population de *Coffea canephora*
+
+```{r}
+library(dplyr)
+library(readr)
+
+setwd("~/M2/Cafeier/Codes/Matrice_indv")
+
+# Chargement des fichiers
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+data_Gypsy <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_RLG.txt", header=TRUE, sep="\t")
+data_Copia <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_RLC.txt", header=TRUE, sep="\t")
+# Fonction pour ajuster les noms d'individus : avec colname les nom d'individus ont des . au lieu des - et des X qd le nom commence par des chiffres...
+corriger_nom_colonne <- function(nom) {
+  nom_corrige <- gsub("-", ".", nom)  # Remplace "-" par "."
+  if (grepl("^[0-9]", nom_corrige)) {  # Ajoute "X" si le nom commence par un chiffre
+    nom_corrige <- paste0("X", nom_corrige)
+  }
+  return(nom_corrige)
+}
+
+# Liste des colonnes à garder
+colonnes_fixes <- c("MEI", "CHROM", "POS", "REF", "ALT", "SVLEN", "X0START", "X0END", 
+                    "MESTRAND", "Type", "Superfamily", "Family", "Line")
+
+filtrer_population <- function(data, pop_list, pop_name) {
+  # Corriger les noms pour correspondre aux colonnes de data
+  pop_list_corrige <- sapply(pop_list, corriger_nom_colonne)
+
+  cols_to_keep <- c("MEI", "CHROM", "POS", pop_list_corrige, "REF", "ALT", "SVLEN", 
+                    "X0START", "X0END", "MESTRAND", "Type", "Superfamily", "Family", "Line")
+  cols_to_keep <- intersect(cols_to_keep, colnames(data))
+
+  if (length(cols_to_keep) > 3) {
+    subset_data <- data %>% select(all_of(cols_to_keep))
+    write_delim(subset_data, paste0("Indv_matrix_", pop_name, ".txt"), delim = "\t")
+    message(paste("Fichier sauvegardé pour", pop_name, "avec", length(pop_list), "individus."))
+  } else {
+    message(paste("Aucune donnée suffisante pour", pop_name))
+  }
+}
+
+
+# Appliquer la fonction à chaque population
+filtrer_population(data, pop_AG, "AG")
+filtrer_population(data, pop_C, "C")
+filtrer_population(data, pop_D, "D")
+filtrer_population(data, pop_hb, "hb")
+filtrer_population(data, pop_OB, "OB")
+filtrer_population(data, pop_ER, "ER")
+filtrer_population(data, pop_V, "V")
+
+### Idem une fonction pour Gypsy
+filtrer_population_Gypsy <- function(data, pop_list, pop_name) {
+  # Corriger les noms pour correspondre aux colonnes de data
+  pop_list_corrige <- sapply(pop_list, corriger_nom_colonne)
+
+  cols_to_keep <- c("MEI", "CHROM", "POS", pop_list_corrige, "REF", "ALT", "SVLEN", 
+                    "X0START", "X0END", "MESTRAND", "Type", "Superfamily", "Family", "Line")
+  cols_to_keep <- intersect(cols_to_keep, colnames(data))
+
+  if (length(cols_to_keep) > 3) {
+    subset_data <- data %>% select(all_of(cols_to_keep))
+    write_delim(subset_data, paste0("Indv_matrix_", pop_name, "_Gypsy.txt"), delim = "\t")
+    message(paste("Fichier sauvegardé pour", pop_name, "avec", length(pop_list), "individus."))
+  } else {
+    message(paste("Aucune donnée suffisante pour", pop_name))
+  }
+}
+
+
+# Appliquer la fonction à chaque population
+filtrer_population_Gypsy(data_Gypsy, pop_AG, "AG")
+filtrer_population_Gypsy(data_Gypsy, pop_C, "C")
+filtrer_population_Gypsy(data_Gypsy, pop_D, "D")
+filtrer_population_Gypsy(data_Gypsy, pop_hb, "hb")
+filtrer_population_Gypsy(data_Gypsy, pop_OB, "OB")
+filtrer_population_Gypsy(data_Gypsy, pop_ER, "ER")
+filtrer_population_Gypsy(data_Gypsy, pop_V, "V")
+
+### Idem une fonction pour Copia
+filtrer_population_Copia <- function(data, pop_list, pop_name) {
+  # Corriger les noms pour correspondre aux colonnes de data
+  pop_list_corrige <- sapply(pop_list, corriger_nom_colonne)
+
+  cols_to_keep <- c("MEI", "CHROM", "POS", pop_list_corrige, "REF", "ALT", "SVLEN", 
+                    "X0START", "X0END", "MESTRAND", "Type", "Superfamily", "Family", "Line")
+  cols_to_keep <- intersect(cols_to_keep, colnames(data))
+
+  if (length(cols_to_keep) > 3) {
+    subset_data <- data %>% select(all_of(cols_to_keep))
+    write_delim(subset_data, paste0("Indv_matrix_", pop_name, "_Copia.txt"), delim = "\t")
+    message(paste("Fichier sauvegardé pour", pop_name, "avec", length(pop_list), "individus."))
+  } else {
+    message(paste("Aucune donnée suffisante pour", pop_name))
+  }
+}
+
+
+# Appliquer la fonction à chaque population
+filtrer_population_Copia(data_Copia, pop_AG, "AG")
+filtrer_population_Copia(data_Copia, pop_C, "C")
+filtrer_population_Copia(data_Copia, pop_D, "D")
+filtrer_population_Copia(data_Copia, pop_hb, "hb")
+filtrer_population_Copia(data_Copia, pop_OB, "OB")
+filtrer_population_Copia(data_Copia, pop_ER, "ER")
+filtrer_population_Copia(data_Copia, pop_V, "V")
+```
+
+```{r}
+```
+
+<https://r-graph-gallery.com/stacked-barplot.html>
+
+see <https://r-graph-gallery.com/circular-barplot.html>
+
+## Barplots
+
+### Proportions / charge TEs au sein de tous les individus
+
+```{r}
+# Chargement du fichier complet
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+
+# Création du sous-ensemble pour RLG
+data_RLG <- data[data$Superfamily == "RLG", ]
+
+# Création du sous-ensemble pour RLC
+data_RLC <- data[data$Superfamily == "RLC", ]
+
+# Sauvegarde des fichiers séparés
+write.table(data_RLG, "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_RLG.txt", sep="\t", row.names=FALSE, quote=FALSE)
+
+write.table(data_RLC, "~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_RLC.txt", sep="\t", row.names=FALSE, quote=FALSE)
+
+```
+
+```{r}
+# Chargement du fichier
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+
+# Conversion des colonnes d'individus en numérique
+for (i in 4:123) {
+  data[, i] <- as.numeric(as.character(data[, i]))
+}
+
+# Création d'un dataframe pour stocker les résultats
+results <- data.frame()
+
+# Pour chaque individu, calculer la somme des valeurs pour RLG et RLC : TEs Load
+for (i in 4:123) {
+  indiv_name <- colnames(data)[i]
+  
+  # Filtrer les lignes où Family est "RLG" et sommer les valeurs pour cet individu
+  sum_RLG <- sum(data[data$Superfamily == "RLG", i], na.rm = TRUE)
+  
+  # Filtrer les lignes où Family est "RLC" et sommer les valeurs pour cet individu
+  sum_RLC <- sum(data[data$Superfamily == "RLC", i], na.rm = TRUE)
+  
+  # Ajouter à notre dataframe de résultats avec les noms modifiés
+  results <- rbind(results, data.frame(Individual = indiv_name, 
+                                       Superfamily = "Gypsy",  # Modifié RLG -> Gypsy
+                                       Count = sum_RLG))
+  results <- rbind(results, data.frame(Individual = indiv_name, 
+                                       Superfamily = "Copia",  # Modifié RLC -> Copia
+                                       Count = sum_RLC))
+}
+
+# Calculer les proportions
+# Grouper par individu
+library(dplyr)
+totals_by_indiv <- results %>%
+  group_by(Individual) %>%
+  summarize(Total = sum(Count))
+
+# Joindre les totaux et calculer les proportions
+results <- results %>%
+  left_join(totals_by_indiv, by = "Individual") %>%
+  mutate(Proportion = Count / Total)
+
+# Créer le barplot empilé
+library(ggplot2)
+
+ggplot(results, aes(x = Individual, y = Proportion, fill = Superfamily)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+  labs(title = "Proportion de Gypsy et Copia par individu",
+       x = "Individu",
+       y = "Charge TEs",
+       fill = "Super-famille RT-LTR") +
+  scale_fill_manual(values = c("Gypsy" = "lightblue", "Copia" = "lightgreen"))
+
+```
+
+Afficher les noms originaux et modifiés pour vérification :
+
+name_mapping \<- data.frame( Column_Name = colnames(data)\[4:123\], Original_Name = gsub("\\.", "-", colnames(data)\[4:123\]) ) print(name_mapping)
+
+```{r}
+# Chargement du fichier
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+
+
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer une liste de populations basée sur Group_analysis
+populations <- split(correspondance$formatted_id, correspondance$Group_analysis)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+
+# Conversion des colonnes d'individus en numérique
+for (i in 4:123) {
+  data[, i] <- as.numeric(as.character(data[, i]))
+}
+
+# Création d'un dataframe pour stocker les résultats
+results <- data.frame()
+
+# Pour chaque individu, calculer la somme des valeurs pour RLG et RLC : TEs Load
+for (i in 4:123) {
+  indiv_name <- colnames(data)[i]
+  
+  # Filtrer les lignes où Family est "RLG" et sommer les valeurs pour cet individu
+  sum_RLG <- sum(data[data$Superfamily == "RLG", i], na.rm = TRUE)
+  
+  # Filtrer les lignes où Family est "RLC" et sommer les valeurs pour cet individu
+  sum_RLC <- sum(data[data$Superfamily == "RLC", i], na.rm = TRUE)
+  
+  # Déterminer la population de l'individu
+  pop <- "Unknown"
+  if (indiv_name %in% pop_A) pop <- "A"
+  else if (indiv_name %in% pop_G) pop <- "G"
+  else if (indiv_name %in% pop_C) pop <- "C"
+  else if (indiv_name %in% pop_D) pop <- "D"
+  else if (indiv_name %in% pop_hb) pop <- "hb"
+  else if (indiv_name %in% pop_B) pop <- "B"
+  else if (indiv_name %in% pop_O) pop <- "O"
+  else if (indiv_name %in% pop_E) pop <- "E"
+  else if (indiv_name %in% pop_R) pop <- "R"
+  else if (indiv_name %in% pop_V) pop <- "V"
+  
+  # Ajouter à notre dataframe de résultats avec les noms modifiés
+  results <- rbind(results, data.frame(Individual = indiv_name, 
+                                       Population = pop,
+                                       Superfamily = "Gypsy",  # Modifié RLG -> Gypsy
+                                       Count = sum_RLG))
+  results <- rbind(results, data.frame(Individual = indiv_name, 
+                                       Population = pop,
+                                       Superfamily = "Copia",  # Modifié RLC -> Copia
+                                       Count = sum_RLC))
+}
+
+# Calculer les proportions
+# Grouper par individu
+library(dplyr)
+library(tidyr)
+totals_by_indiv <- data %>%
+  summarise(across(4:123, ~ sum(!is.na(.)))) %>% # compte le nombre de valeurs non manquantes (non-NA) dans chaque colonne
+  pivot_longer(cols = everything(), names_to = "Individual", values_to = "Total") # je fait pivoter mon tableau pour avoir les individus en ligne
+#totals_by_indiv <- results %>%
+ # group_by(Individual) %>%
+  # summarize(Total = sum(Count))
+
+# Joindre les totaux et calculer les proportions
+results <- results %>%
+  left_join(totals_by_indiv, by = "Individual") %>%
+  mutate(Proportion = Count / Total)
+
+# Grouper les populations selon les catégories
+results <- results %>%
+  mutate(Population_Group = case_when(
+    Population %in% c("A", "G") ~ "AG",
+    Population == "C" ~ "C",
+    Population == "D" ~ "D",
+    Population == "hb" ~ "hb",
+    Population %in% c("B", "O") ~ "OB",
+    Population %in% c("E", "R") ~ "ER",
+    Population == "V" ~ "V",
+    TRUE ~ "Unknown"
+  ))
+
+# Réorganiser les niveaux de la variable Population_Group
+results$Population_Group <- factor(results$Population_Group, 
+                                                levels = c("AG","C", "D", "hb",  "OB", "ER", "V", "Unknown"))
+# Vérifier combien d'individus sont assignés à chaque population
+print("Nombre d'individus par population:")
+print(table(results$Population_Group))
+
+# Créer le barplot empilé (stacked), groupé par population
+library(ggplot2)
+ggplot(results, aes(x = Individual, y = Proportion, fill = Superfamily)) +
+  geom_bar(stat = "identity") +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 6),
+        strip.text = element_text(size = 10, face = "bold"),
+        panel.spacing = unit(0.2, "lines"),
+        plot.title = element_text(hjust = 0.5)) +  # Centrer le titre
+  labs(title = "Charge en Gypsy et Copia par individu et population de Coffea canephora",
+       x = "Individus",
+       y = "Charge TEs",
+       fill = "Super-famille RT-LTR") +
+  scale_fill_manual(values = c("Gypsy" = "#ADD8E6", "Copia" = "#B39DDB"))
+
+
+library(ggplot2)
+
+ggplot(results, aes(x = Individual, y = Proportion, fill = Superfamily)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +  # Ajout des bordures
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  theme_minimal() +  # Thème plus épuré
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),  # Titres des facettes 
+    panel.spacing = unit(0.2, "lines"),  # Espacement entre les facettes
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),  # Centrage et mise en forme du titre
+    legend.title = element_text(size = 8, face = "bold"),  # Titre de la légende 
+    legend.text = element_text(size = 7),  # Texte de la légende 
+    axis.title = element_text(size = 10, face = "bold"),  # Titres des axes
+    axis.text.x = element_blank(),  # Supprime les noms des individus
+  axis.ticks.x = element_blank()  # Supprime aussi les petits traits de graduation des individus
+  ) +
+  labs(
+    title = "Charge en Gypsy et Copia par individu et population de Caféiers robusta",
+    x = "Individus par population",
+    y = "Charge TEs",
+    fill = "Super-famille RT-LTR"
+  ) +
+  scale_fill_manual(values = c("Gypsy" = "#63C5B8", "Copia" = "#FFA07A"))  # Palette de couleurs améliorée
+```
+
+Vérification des individus "Unknown"
+
+```{r}
+
+# Extraire la liste des individus "Unknown"
+unknown_individuals <- unique(results$Individual[results$Population == "Unknown"])
+
+# Afficher le nombre d'individus inconnus
+cat("Nombre d'individus classés comme 'Unknown':", length(unknown_individuals), "\n\n")
+
+# Afficher la liste des individus inconnus
+cat("Liste des individus 'Unknown':\n")
+print(unknown_individuals)
+
+# Exporter cette liste dans un fichier
+write.table(unknown_individuals, 
+            "~/M2/Cafeier/data_coffea/unknown_individuals.txt", 
+            row.names = FALSE, col.names = FALSE, quote = FALSE)
+```
+
+#### Par Types\>Superfamilles\>familles TEs
+
+Ici je calcule le nb total de TE par Famille LTR-RT Copia ou Gypsy, i.e. la charge totale en TEs, ou somme des 0, 1 et 2 de la matrice .
+
+Puis la proportion en divisant par le total de valeurs non manquantes pour chaque individu (nb de fois où un TE est retrouvé sur l'ensemble de mon jeu de données.
+
+```{r}
+# Chargement du fichier
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+
+
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer une liste de populations basée sur Group_analysis
+populations <- split(correspondance$formatted_id, correspondance$Group_analysis)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+
+# Conversion des colonnes d'individus en numérique
+for (i in 4:123) {
+  data[, i] <- as.numeric(as.character(data[, i]))
+}
+# Création d'un dataframe pour stocker les résultats
+library(dplyr)
+library(tidyr)
+
+# Nouveau dataframe pour stocker les résultats avec la hiérarchie Type > Superfamily > Family
+results_hierarchical <- data.frame()
+
+# Pour chaque individu, calculer la somme des valeurs selon Type > Superfamily > Family
+for (i in 4:123) {
+  indiv_name <- colnames(data)[i]
+  
+  # Obtenir les combinaisons uniques de Type, Superfamily et Family
+  type_super_family_combos <- unique(data[, c("Type", "Superfamily", "Family")])
+  
+  # Pour chaque combinaison, calculer la somme
+  for (j in 1:nrow(type_super_family_combos)) {
+    type_val <- type_super_family_combos$Type[j]
+    super_val <- type_super_family_combos$Superfamily[j]
+    family_val <- type_super_family_combos$Family[j]
+    
+    # Filtrer les lignes correspondant à cette combinaison
+    filtered_rows <- data$Type == type_val & 
+      data$Superfamily == super_val & 
+      data$Family == family_val
+    
+    # Sommer les valeurs pour cet individu et cette combinaison
+    sum_val <- sum(data[filtered_rows, i], na.rm = TRUE)
+    # Déterminer la population de l'individu
+    pop <- "Unknown"
+    if (indiv_name %in% pop_A) pop <- "A"
+    else if (indiv_name %in% pop_G) pop <- "G"
+    else if (indiv_name %in% pop_C) pop <- "C"
+    else if (indiv_name %in% pop_D) pop <- "D"
+    else if (indiv_name %in% pop_hb) pop <- "hb"
+    else if (indiv_name %in% pop_B) pop <- "B"
+    else if (indiv_name %in% pop_O) pop <- "O"
+    else if (indiv_name %in% pop_E) pop <- "E"
+    else if (indiv_name %in% pop_R) pop <- "R"
+    else if (indiv_name %in% pop_V) pop <- "V"
+    
+    # Ajouter à notre dataframe de résultats
+    results_hierarchical <- rbind(results_hierarchical, 
+                                  data.frame(Individual = indiv_name,
+                                             Population = pop,
+                                             Type = type_val,
+                                             Superfamily = super_val,
+                                             Family = family_val,
+                                             Count = sum_val))
+  }
+}
+
+# Calculer les totaux par individu
+totals_by_indiv <- results_hierarchical %>%
+  group_by(Individual) %>%
+  summarize(Total = sum(Count, na.rm = TRUE))  # Ajouter na.rm = TRUE pour ignorer les NA
+
+# Joindre les totaux et calculer les proportions
+results_hierarchical <- results_hierarchical %>%
+  left_join(totals_by_indiv, by = "Individual") %>%  # Joindre les totaux
+  mutate(Proportion = Count / Total)  # Calculer les proportions
+
+# Grouper les populations selon les catégories
+results_hierarchical <- results_hierarchical %>%
+  mutate(Population_Group = case_when(
+    Population %in% c("A", "G") ~ "AG",
+    Population == "C" ~ "C",
+    Population == "D" ~ "D",
+    Population == "hb" ~ "hb",
+    Population %in% c("B", "O") ~ "OB",
+    Population %in% c("E", "R") ~ "ER",
+    Population == "V" ~ "V",
+    TRUE ~ "Unknown"
+  ))
+
+# Réorganiser les niveaux de la variable Population_Group
+results_hierarchical$Population_Group <- factor(results_hierarchical$Population_Group, 
+                                                levels = c("AG","C", "D", "hb",  "OB", "ER", "V", "Unknown"))
+
+# Vérifier combien d'individus sont assignés à chaque population
+print("Nombre d'individus par population:")
+print(table(results_hierarchical$Population_Group))
+
+# Créer une nouvelle variable combinée pour la légende
+results_hierarchical <- results_hierarchical %>%
+  mutate(Classification = paste(Type, Superfamily, Family, sep=" - "))
+
+# Visualisation avec ggplot2
+library(ggplot2)
+
+# Plot par Type et Superfamily
+ggplot(results_hierarchical, aes(x = Individual, y = Proportion, fill = interaction(Type, Superfamily, Family))) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) +
+  labs(
+    title = "Charge en éléments transposables par type, super famille et famille TEs, par individu et population de Caféiers robusta",
+    y = "Charge TEs",
+    fill = "Classification (Type - Superfamily - Family)"
+  ) +
+  scale_fill_viridis_d(option = "plasma") # Utiliser une palette viridis pour mieux distinguer les multiples catégories
+
+# Alternative: plot séparé pour chaque Type
+ggplot(results_hierarchical, aes(x = Individual, y = Proportion, fill = interaction(Superfamily, Family))) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  facet_grid(Type ~ Population_Group, scales = "free_x", space = "free_x") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) +
+  labs(
+    title = "Charge en éléments transposables par type, super famille et famille TEs, par individu et population de Caféiers robusta",
+    x = "Individus par population",
+    y = "Charge TEs",
+    fill = "Classification (Superfamily - Family)"
+  ) +
+  scale_fill_viridis_d(option = "plasma")
+
+```
+
+```{r}
+# Chargement du fichier
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer une liste de populations basée sur Group_analysis
+populations <- split(correspondance$formatted_id, correspondance$Group_analysis)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+
+
+# Conversion des colonnes d'individus en numérique
+for (i in 4:123) {
+  data[, i] <- as.numeric(as.character(data[, i]))
+}
+# Création d'un dataframe pour stocker les résultats
+library(dplyr)
+library(tidyr)
+
+# Remplacer les valeurs NA dans les colonnes importantes
+data$Type[is.na(data$Type)] <- "Unknown"
+data$Superfamily[is.na(data$Superfamily)] <- "Unknown"
+data$Family[is.na(data$Family)] <- "Unknown"
+
+# Nouveau dataframe pour stocker les résultats avec la hiérarchie Type > Superfamily > Family
+results_hierarchical <- data.frame()
+
+# Pour chaque individu, calculer la somme des valeurs selon Type > Superfamily > Family
+for (i in 4:123) {
+  indiv_name <- colnames(data)[i]
+  
+  # Obtenir les combinaisons uniques de Type, Superfamily et Family
+  type_super_family_combos <- unique(data[, c("Type", "Superfamily", "Family")])
+  
+  # Pour chaque combinaison, calculer la somme
+  for (j in 1:nrow(type_super_family_combos)) {
+    type_val <- type_super_family_combos$Type[j]
+    super_val <- type_super_family_combos$Superfamily[j]
+    family_val <- type_super_family_combos$Family[j]
+    
+    # Filtrer les lignes correspondant à cette combinaison
+    filtered_rows <- data$Type == type_val & 
+                    data$Superfamily == super_val & 
+                    data$Family == family_val
+    
+    # Sommer les valeurs pour cet individu et cette combinaison
+    sum_val <- sum(data[filtered_rows, i], na.rm = TRUE)
+    
+    # Déterminer la population de l'individu
+    pop <- "Unknown"
+    if (indiv_name %in% pop_A) pop <- "A"
+    else if (indiv_name %in% pop_G) pop <- "G"
+    else if (indiv_name %in% pop_C) pop <- "C"
+    else if (indiv_name %in% pop_D) pop <- "D"
+    else if (indiv_name %in% pop_hb) pop <- "hb"
+    else if (indiv_name %in% pop_B) pop <- "B"
+    else if (indiv_name %in% pop_O) pop <- "O"
+    else if (indiv_name %in% pop_E) pop <- "E"
+    else if (indiv_name %in% pop_R) pop <- "R"
+    else if (indiv_name %in% pop_V) pop <- "V"
+    
+    # Ajouter à notre dataframe de résultats
+    results_hierarchical <- rbind(results_hierarchical, 
+                                 data.frame(Individual = indiv_name,
+                                           Population = pop,
+                                           Type = type_val,
+                                           Superfamily = super_val,
+                                           Family = family_val,
+                                           Count = sum_val))
+  }
+}
+
+# Calculer les totaux par individu
+totals_by_indiv <- results_hierarchical %>%
+  group_by(Individual) %>%
+  summarize(Total = sum(Count))
+
+# Joindre les totaux et calculer les proportions
+results_hierarchical <- results_hierarchical %>%
+  left_join(totals_by_indiv, by = "Individual") %>%
+  mutate(Proportion = Count / Total)
+
+# Grouper les populations selon les catégories
+results_hierarchical <- results_hierarchical %>%
+  mutate(Population_Group = case_when(
+    Population %in% c("A", "G") ~ "AG",
+    Population == "C" ~ "C",
+    Population == "D" ~ "D",
+    Population == "hb" ~ "hb",
+    Population %in% c("B", "O") ~ "OB",
+    Population %in% c("E", "R") ~ "ER",
+    Population == "V" ~ "V",
+    TRUE ~ "Unknown"
+  ))
+
+# Réorganiser les niveaux de la variable Population_Group
+results_hierarchical$Population_Group <- factor(results_hierarchical$Population_Group, 
+                                                levels = c("AG","C", "D", "hb",  "OB", "ER", "V", "Unknown"))
+
+# Créer une classification détaillée qui conserve toutes les informations
+results_hierarchical <- results_hierarchical %>%
+  mutate(Full_Classification = case_when(
+    # Pour les LTR-RLG (Gypsy), on donne le nom de famille 
+    Type == "LTR" & Superfamily == "RLG" ~ paste("Gypsy", Family, sep=" - "),
+    # Pour les LTR-RLC (Copia), on donne le nom de famille
+    Type == "LTR" & Superfamily == "RLC" ~ paste("Copia", Family, sep=" - "),
+    # Pour tout le reste, on garde Type-Superfamily-Family
+    TRUE ~ paste(Type, Superfamily, Family, sep=" - ")
+  ))
+
+# Vérifier combien d'individus sont assignés à chaque population
+print("Nombre d'individus par population:")
+print(table(results_hierarchical$Population_Group))
+
+# Créer une colonne pour la classification de premier niveau (pour regrouper les couleurs)
+results_hierarchical <- results_hierarchical %>%
+  mutate(Main_Class = case_when(
+    Type == "LTR" & Superfamily == "RLG" ~ "Gypsy",
+    Type == "LTR" & Superfamily == "RLC" ~ "Copia",
+    TRUE ~ as.character(Type)
+  ))
+
+# Visualisation avec ggplot2
+library(ggplot2)
+library(RColorBrewer)
+
+# Créer une palette de couleurs étendue
+n_classes <- length(unique(results_hierarchical$Full_Classification))
+all_colors <- colorRampPalette(brewer.pal(11, "Spectral"))(n_classes)
+
+# Obtenir les classifications uniques
+unique_classifications <- unique(results_hierarchical$Full_Classification)
+gypsy_classifications <- grep("^Gypsy", unique_classifications, value = TRUE)
+copia_classifications <- grep("^Copia", unique_classifications, value = TRUE)
+other_classifications <- unique_classifications[!unique_classifications %in% c(gypsy_classifications, copia_classifications)]
+
+# Créer une palette de couleurs pour chaque groupe
+gypsy_colors <- colorRampPalette(c("#63C5B8", "#00796B"))(length(gypsy_classifications))
+copia_colors <- colorRampPalette(c("#FFA07A", "#D84315"))(length(copia_classifications))
+
+# Couleurs pour les autres classifications, groupées par Type principal
+other_types <- unique(results_hierarchical$Type[results_hierarchical$Full_Classification %in% other_classifications])
+other_types <- other_types[!is.na(other_types)]  # Éliminer les NA
+other_colors <- c()
+
+for (type in other_types) {
+  type_classifications <- grep(paste0("^", type), other_classifications, value = TRUE)
+  if (length(type_classifications) > 0) {
+    if (type == "LINE") {
+      type_colors <- colorRampPalette(brewer.pal(9, "Blues"))(length(type_classifications))
+    } else if (type == "TIR") {
+      type_colors <- colorRampPalette(brewer.pal(9, "Oranges"))(length(type_classifications))
+    } else if (type == "SINE") {
+      type_colors <- colorRampPalette(brewer.pal(9, "Purples"))(length(type_classifications))
+    } else if (type == "TRIM") {
+      type_colors <- colorRampPalette(brewer.pal(9, "Greens"))(length(type_classifications))
+    } else if (type == "LARD") {
+      type_colors <- colorRampPalette(brewer.pal(9, "Reds"))(length(type_classifications))
+    } else {
+      type_colors <- colorRampPalette(brewer.pal(9, "Greys"))(length(type_classifications))
+    }
+    names(type_colors) <- type_classifications
+    other_colors <- c(other_colors, type_colors)
+  }
+}
+
+# Combiner toutes les couleurs
+named_colors <- c()
+if (length(gypsy_classifications) > 0) {
+  names(gypsy_colors) <- gypsy_classifications
+  named_colors <- c(named_colors, gypsy_colors)
+}
+if (length(copia_classifications) > 0) {
+  names(copia_colors) <- copia_classifications
+  named_colors <- c(named_colors, copia_colors)
+}
+if (length(other_colors) > 0) {
+  named_colors <- c(named_colors, other_colors)
+}
+
+# Pour les classifications restantes (non assignées), utiliser des gris
+remaining_classifications <- unique_classifications[!unique_classifications %in% names(named_colors)]
+if (length(remaining_classifications) > 0) {
+  remaining_colors <- colorRampPalette(brewer.pal(9, "Greys"))(length(remaining_classifications))
+  names(remaining_colors) <- remaining_classifications
+  named_colors <- c(named_colors, remaining_colors)
+}
+
+# Plot principal avec toutes les classifications détaillées
+ggplot(results_hierarchical, aes(x = Individual, y = Proportion, fill = Full_Classification)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    legend.position = "bottom",
+    legend.box = "vertical"
+  ) +
+  labs(
+    title = "Charge en éléments transposables par individu et population de Caféiers robusta",
+    subtitle = "Classification détaillée par Type, Superfamily et Family avec distinction Gypsy/Copia",
+    x = "Individus par population",
+    y = "Charge TEs",
+    fill = "Classification complète"
+  ) +
+  scale_fill_manual(values = named_colors) +
+  guides(fill = guide_legend(ncol = 3))
+
+# Visualisation par Type principal
+ggplot(results_hierarchical, aes(x = Individual, y = Proportion, fill = Full_Classification)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  facet_grid(Main_Class ~ Population_Group, scales = "free_x", space = "free_x") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    legend.position = "bottom",
+    legend.box = "vertical"
+  ) +
+  labs(
+    title = "Charge en éléments transposables par type principal, individu et population de Caféiers robusta",
+    subtitle = "Classification détaillée avec distinction de Gypsy et Copia au sein des LTR",
+    x = "Individus par population",
+    y = "Charge TEs",
+    fill = "Classification complète"
+  ) +
+  scale_fill_manual(values = named_colors) +
+  guides(fill = guide_legend(ncol = 3))
+```
+
+```{r}
+# Chargement du fichier
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer une liste de populations basée sur Group_analysis
+populations <- split(correspondance$formatted_id, correspondance$Group_analysis)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+
+# Conversion des colonnes d'individus en numérique
+for (i in 4:123) {
+  data[, i] <- as.numeric(as.character(data[, i]))
+}
+
+# Chargement des bibliothèques nécessaires
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Création d'un dataframe pour stocker les résultats
+results <- data.frame()
+
+# Pour chaque individu, calculer la somme des valeurs pour chaque famille au sein des superfamilles RLG et RLC
+for (i in 4:123) {
+  indiv_name <- colnames(data)[i]
+  
+  # Obtenir toutes les familles uniques pour RLG (Gypsy) et RLC (Copia)
+  gypsy_families <- unique(data$Family[data$Superfamily == "RLG"])
+  copia_families <- unique(data$Family[data$Superfamily == "RLC"])
+  
+  # Déterminer la population de l'individu
+  pop <- "Unknown"
+  if (indiv_name %in% pop_A) pop <- "A"
+  else if (indiv_name %in% pop_G) pop <- "G"
+  else if (indiv_name %in% pop_C) pop <- "C"
+  else if (indiv_name %in% pop_D) pop <- "D"
+  else if (indiv_name %in% pop_hb) pop <- "hb"
+  else if (indiv_name %in% pop_B) pop <- "B"
+  else if (indiv_name %in% pop_O) pop <- "O"
+  else if (indiv_name %in% pop_E) pop <- "E"
+  else if (indiv_name %in% pop_R) pop <- "R"
+  else if (indiv_name %in% pop_V) pop <- "V"
+  
+  # Pour chaque famille Gypsy, calculer la somme et ajouter au dataframe des résultats
+  for (family in gypsy_families) {
+    sum_family <- sum(data[data$Superfamily == "RLG" & data$Family == family, i], na.rm = TRUE)
+    results <- rbind(results, data.frame(Individual = indiv_name, 
+                                         Population = pop,
+                                         Superfamily = "Gypsy",
+                                         Family = family,
+                                         Count = sum_family))
+  }
+  
+  # Pour chaque famille Copia, calculer la somme et ajouter au dataframe des résultats
+  for (family in copia_families) {
+    sum_family <- sum(data[data$Superfamily == "RLC" & data$Family == family, i], na.rm = TRUE)
+    results <- rbind(results, data.frame(Individual = indiv_name, 
+                                         Population = pop,
+                                         Superfamily = "Copia",
+                                         Family = family,
+                                         Count = sum_family))
+  }
+}
+
+# Calculer les totaux par individu
+totals_by_indiv <- data %>%
+  summarise(across(4:123, ~ sum(!is.na(.)))) %>%
+  pivot_longer(cols = everything(), names_to = "Individual", values_to = "Total")
+
+# Joindre les totaux et calculer les proportions
+results <- results %>%
+  left_join(totals_by_indiv, by = "Individual") %>%
+  mutate(Proportion = Count / Total)
+
+# Grouper les populations selon les catégories
+results <- results %>%
+ mutate(Population_Group = case_when(
+    Population %in% c("A", "G") ~ "AG",
+    Population == "C" ~ "C",
+    Population == "D" ~ "D",
+    Population == "hb" ~ "hb",
+    Population %in% c("B", "O") ~ "OB",
+    Population %in% c("E", "R") ~ "ER",
+    Population == "V" ~ "V",
+    TRUE ~ "Unknown"
+  ))
+
+# Réorganiser les niveaux de la variable Population_Group
+results$Population_Group <- factor(results$Population_Group, 
+                             levels = c("AG", "C", "D", "hb", "OB", "ER", "V", "Unknown"))
+
+# Vérifier combien d'individus sont assignés à chaque population
+print("Nombre d'individus par population:")
+print(table(results$Population_Group))
+
+# Créer un graphique pour les familles de Gypsy
+ggplot(results[results$Superfamily == "Gypsy",], 
+       aes(x = Individual, y = Proportion, fill = Family)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) +
+  labs(
+    title = "Charge des familles Gypsy par individu et population de Caféiers robusta",
+    x = "Individus par population",
+    y = "Charge TEs",
+    fill = "Famille Gypsy"
+  ) +
+  scale_fill_viridis_d(option = "plasma")  # Palette de couleurs pour différencier les familles
+
+# Créer un graphique pour les familles de Copia
+ggplot(results[results$Superfamily == "Copia",], 
+       aes(x = Individual, y = Proportion, fill = Family)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) +
+  labs(
+    title = "Charge des familles Copia par individu et population de Caféiers robusta",
+    x = "Individus par population",
+    y = "Charge TEs",
+    fill = "Famille Copia"
+  ) +
+  scale_fill_viridis_d(option = "viridis")  # Palette de couleurs différente pour Copia
+
+# Un résumé statistique de la distribution des familles par population
+family_summary <- results %>%
+  group_by(Population_Group, Superfamily, Family) %>%
+  summarize(
+    Mean_Count = mean(Count, na.rm = TRUE),
+    Mean_Proportion = mean(Proportion, na.rm = TRUE),
+    SD_Proportion = sd(Proportion, na.rm = TRUE),
+    .groups = "drop"  # Ceci supprimera tous les groupements après summarize
+  ) %>%
+  arrange(Population_Group, Superfamily, desc(Mean_Proportion))
+
+# Afficher le résumé
+print(family_summary)
+```
+
+### Proportion d'hétérozygotes
+
+Il s'agit du nombre de 1 par individu dans ma matrice sur le nombre total étant le nombre de valeurs non manquantes pour cet individu, i.e. nb de position où l'on a retrouvé un élément transposable
+
+```{r}
+# Chargement du fichier
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer une liste de populations basée sur Group_analysis
+populations <- split(correspondance$formatted_id, correspondance$Group_analysis)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+
+# Conversion des colonnes d'individus en numérique
+for (i in 4:123) {
+  data[, i] <- as.numeric(as.character(data[, i]))
+}
+
+# Création d'un dataframe pour stocker les résultats
+results_hetero <- data.frame()
+
+# Pour chaque individu, calculer la somme des valeurs pour RLG et RLC : TEs Load
+for (i in 4:123) {
+  indiv_name <- colnames(data)[i]
+  
+  # Filtrer les lignes où Family est "RLG" et sommer les valeurs pour cet individu qd heterozygote
+sum_RLG_hetero <- sum(data[data$Superfamily == "RLG", i] == 1, na.rm = TRUE)
+  
+  # Filtrer les lignes où Family est "RLC" et sommer les valeurs pour cet individu qd heterozygote
+sum_RLC_hetero <- sum(data[data$Superfamily == "RLC", i] == 1, na.rm = TRUE)
+  
+  # Déterminer la population de l'individu
+  pop <- "Unknown"
+  if (indiv_name %in% pop_A) pop <- "A"
+  else if (indiv_name %in% pop_G) pop <- "G"
+  else if (indiv_name %in% pop_C) pop <- "C"
+  else if (indiv_name %in% pop_D) pop <- "D"
+  else if (indiv_name %in% pop_hb) pop <- "hb"
+  else if (indiv_name %in% pop_B) pop <- "B"
+  else if (indiv_name %in% pop_O) pop <- "O"
+  else if (indiv_name %in% pop_E) pop <- "E"
+  else if (indiv_name %in% pop_R) pop <- "R"
+  else if (indiv_name %in% pop_V) pop <- "V"
+  
+  # Ajouter à notre dataframe de résultats avec les noms modifiés
+  results_hetero <- rbind(results_hetero, data.frame(Individual = indiv_name, 
+                                       Population = pop,
+                                       Superfamily = "Gypsy",  # Modifié RLG -> Gypsy
+                                       Count_hetero = sum_RLG_hetero))
+  results_hetero <- rbind(results_hetero, data.frame(Individual = indiv_name, 
+                                       Population = pop,
+                                       Superfamily = "Copia",  # Modifié RLC -> Copia
+                                       Count_hetero = sum_RLC_hetero))
+}
+
+# Calculer les proportions
+# Grouper par individu
+library(dplyr)
+library(tidyr)
+totals_by_indiv_hetero <- data %>%
+  summarise(across(4:123, ~ sum(!is.na(.)))) %>%
+  pivot_longer(cols = everything(), names_to = "Individual", values_to = "Total")
+
+# Joindre les totaux et calculer les proportions
+results_hetero <- results_hetero %>%
+  left_join(totals_by_indiv_hetero, by = "Individual") %>%
+  mutate(Proportion_hetero = Count_hetero / Total)
+
+# Grouper les populations selon les catégories
+results_hetero <- results_hetero %>%
+  mutate(Population_Group = case_when(
+    Population %in% c("A", "G") ~ "AG",
+    Population == "C" ~ "C",
+    Population == "D" ~ "D",
+    Population == "hb" ~ "hb",
+    Population %in% c("B", "O") ~ "OB",
+    Population %in% c("E", "R") ~ "ER",
+    Population == "V" ~ "V",
+    TRUE ~ "Unknown"
+  ))
+
+# Réorganiser les niveaux de la variable Population_Group
+results_hetero$Population_Group <- factor(results_hetero$Population_Group, 
+                                   levels = c("AG", "C", "D", "hb", "OB", "ER", "V", "Unknown"))
+
+
+# Vérifier combien d'individus sont assignés à chaque population
+print("Nombre d'individus par population:")
+print(table(results_hetero$Population_Group))
+
+# Créer le barplot empilé (stacked), groupé par population
+library(ggplot2)
+ggplot(results_hetero, aes(x = Individual, y = Proportion_hetero, fill = Superfamily)) +
+  geom_bar(stat = "identity") +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 6),
+        strip.text = element_text(size = 10, face = "bold"),
+        panel.spacing = unit(0.2, "lines"),
+        plot.title = element_text(hjust = 0.5)) +  # Centrer le titre
+  labs(title = "Proportion d'hétérozygotes Gypsy et Copia par individu et population de Coffea canephora",
+       x = "Individus",
+       y = "Hétérozygotie",
+       fill = "Super-famille RT-LTR") +
+  scale_fill_manual(values = c("Gypsy" = "#ADD8E6", "Copia" = "#B39DDB"))
+
+
+### autre représentation
+ggplot(results_hetero, aes(x = Individual, y = Proportion_hetero, fill = Superfamily)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +  # Ajout des bordures
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  theme_minimal() +  # Thème plus épuré
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),  # Titres des facettes 
+    panel.spacing = unit(0.2, "lines"),  # Espacement entre les facettes
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),  # Centrage et mise en forme du titre
+    legend.title = element_text(size = 8, face = "bold"),  # Titre de la légende 
+    legend.text = element_text(size = 7),  # Texte de la légende 
+    axis.title = element_text(size = 10, face = "bold"),  # Titres des axes
+    axis.text.x = element_blank(),  # Supprime les noms des individus
+  axis.ticks.x = element_blank()  # Supprime aussi les petits traits de graduation des individus
+  ) +
+  labs(
+    title = "Proportion d'hétérozygotes Gypsy et Copia par individu et population de Caféiers robusta",
+    x = "Individus par population",
+    y = "Hétérozygotie",
+    fill = "Super-famille RT-LTR"
+  ) +
+  scale_fill_manual(values = c("Gypsy" = "#63C5B8", "Copia" = "#FFA07A"))  # Palette de couleurs améliorée
+
+```
+
+#### Par Types\>Superfamilles\>familles TEs
+
+```{r}
+# Chargement du fichier
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer une liste de populations basée sur Group_analysis
+populations <- split(correspondance$formatted_id, correspondance$Group_analysis)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+
+# Conversion des colonnes d'individus en numérique
+for (i in 4:123) {
+  data[, i] <- as.numeric(as.character(data[, i]))
+}
+
+# Chargement des bibliothèques nécessaires
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Création d'un dataframe pour stocker les résultats
+results_hetero_byFam <- data.frame()
+
+# Pour chaque individu, calculer la somme des valeurs pour chaque famille au sein des superfamilles RLG et RLC
+for (i in 4:123) {
+  indiv_name <- colnames(data)[i]
+  
+  # Obtenir toutes les familles uniques pour RLG (Gypsy) et RLC (Copia)
+  gypsy_families <- unique(data$Family[data$Superfamily == "RLG"])
+  copia_families <- unique(data$Family[data$Superfamily == "RLC"])
+  
+  # Déterminer la population de l'individu
+  pop <- "Unknown"
+  if (indiv_name %in% pop_A) pop <- "A"
+  else if (indiv_name %in% pop_G) pop <- "G"
+  else if (indiv_name %in% pop_C) pop <- "C"
+  else if (indiv_name %in% pop_D) pop <- "D"
+  else if (indiv_name %in% pop_hb) pop <- "hb"
+  else if (indiv_name %in% pop_B) pop <- "B"
+  else if (indiv_name %in% pop_O) pop <- "O"
+  else if (indiv_name %in% pop_E) pop <- "E"
+  else if (indiv_name %in% pop_R) pop <- "R"
+  else if (indiv_name %in% pop_V) pop <- "V"
+  
+  # Pour chaque famille Gypsy, calculer la somme et ajouter au dataframe des résultats
+  for (family in gypsy_families) {
+    sum_family <- sum(data[data$Superfamily == "RLG" & data$Family == family, i] == 1, na.rm = TRUE)
+    results_hetero_byFam <- rbind(results_hetero_byFam, data.frame(Individual = indiv_name, 
+                                         Population = pop,
+                                         Superfamily = "Gypsy",
+                                         Family = family,
+                                         Count = sum_family))
+  }
+  
+  # Pour chaque famille Copia, calculer la somme et ajouter au dataframe des résultats
+  for (family in copia_families) {
+    sum_family <- sum(data[data$Superfamily == "RLC" & data$Family == family, i] == 1, na.rm = TRUE)
+    results_hetero_byFam <- rbind(results_hetero_byFam, data.frame(Individual = indiv_name, 
+                                         Population = pop,
+                                         Superfamily = "Copia",
+                                         Family = family,
+                                         Count = sum_family))
+  }
+}
+
+# Calculer les totaux par individu
+totals_by_indiv <- data %>%
+  summarise(across(4:123, ~ sum(!is.na(.)))) %>%
+  pivot_longer(cols = everything(), names_to = "Individual", values_to = "Total")
+
+# Joindre les totaux et calculer les proportions
+results_hetero_byFam <- results_hetero_byFam %>%
+  left_join(totals_by_indiv, by = "Individual") %>%
+  mutate(Proportion = Count / Total)
+
+# Grouper les populations selon les catégories
+results_hetero_byFam <- results_hetero_byFam %>%
+ mutate(Population_Group = case_when(
+    Population %in% c("A", "G") ~ "AG",
+    Population == "C" ~ "C",
+    Population == "D" ~ "D",
+    Population == "hb" ~ "hb",
+    Population %in% c("B", "O") ~ "OB",
+    Population %in% c("E", "R") ~ "ER",
+    Population == "V" ~ "V",
+    TRUE ~ "Unknown"
+  ))
+
+# Réorganiser les niveaux de la variable Population_Group
+results_hetero_byFam$Population_Group <- factor(results_hetero_byFam$Population_Group, 
+                             levels = c("AG", "C", "D", "hb", "OB", "ER", "V", "Unknown"))
+
+# Vérifier combien d'individus sont assignés à chaque population
+print("Nombre d'individus par population:")
+print(table(results_hetero_byFam$Population_Group))
+
+# Créer un graphique pour les familles de Gypsy
+ggplot(results_hetero_byFam[results_hetero_byFam$Superfamily == "Gypsy",], 
+       aes(x = Individual, y = Proportion, fill = Family)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) +
+  labs(
+    title = "Charge en TEs hétérozygotes des familles Gypsy par individu et population de Caféiers robusta",
+    x = "Individus par population",
+    y = "Charge en TEs hétérozygotes ",
+    fill = "Superfamille Gypsy"
+  ) +
+  scale_fill_viridis_d(option = "plasma")  # Palette de couleurs pour différencier les familles
+
+# Créer un graphique pour les familles de Copia
+ggplot(results_hetero_byFam[results_hetero_byFam$Superfamily == "Copia",], 
+       aes(x = Individual, y = Proportion, fill = Family)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) +
+  labs(
+    title = "Charge en TEs hétérozygotes des familles Copia par individu et population de Caféiers robusta",
+    x = "Individus par population",
+    y = "Charge en TEs hétérozygotes",
+    fill = "Superfamille Copia"
+  ) +
+  scale_fill_viridis_d(option = "viridis")  # Palette de couleurs différente pour Copia
+
+# Un résumé statistique de la distribution des familles par population
+family_summary_hetero_byFam <- results_hetero_byFam %>%
+  group_by(Population_Group, Superfamily, Family) %>%
+  summarize(
+    Mean_Count = mean(Count, na.rm = TRUE),
+    Mean_Proportion = mean(Proportion, na.rm = TRUE),
+    SD_Proportion = sd(Proportion, na.rm = TRUE),
+    .groups = "drop"  # Ceci supprimera tous les groupements après summarize
+  ) %>%
+  arrange(Population_Group, Superfamily, desc(Mean_Proportion))
+
+# Afficher le résumé
+print(family_summary_hetero_byFam)
+```
+
+### Proportion d'homozygotes TEs
+
+Il s'agit du nombre de 2 par individu dans ma matrice sur le nombre total étant le nombre de valeurs non manquantes pour cet individu, i.e. nb de position où l'on a retrouvé un élément transposable (par Type/Superfamille/Famille TE RT LTR)
+
+```{r}
+# Chargement du fichier
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer une liste de populations basée sur Group_analysis
+populations <- split(correspondance$formatted_id, correspondance$Group_analysis)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+
+# Conversion des colonnes d'individus en numérique
+for (i in 4:123) {
+  data[, i] <- as.numeric(as.character(data[, i]))
+}
+
+# Création d'un dataframe pour stocker les résultats
+results_homo <- data.frame()
+
+# Pour chaque individu, calculer la somme des valeurs pour RLG et RLC : TEs Load
+for (i in 4:123) {
+  indiv_name <- colnames(data)[i]
+  
+  # Filtrer les lignes où Family est "RLG" et sommer les valeurs pour cet individu qd homozygote
+sum_RLG_homo <- sum(data[data$Superfamily == "RLG", i] == 2, na.rm = TRUE)
+  
+  # Filtrer les lignes où Family est "RLC" et sommer les valeurs pour cet individu qd homozygote
+sum_RLC_homo <- sum(data[data$Superfamily == "RLC", i] == 2, na.rm = TRUE)
+  
+  # Déterminer la population de l'individu
+  pop <- "Unknown"
+  if (indiv_name %in% pop_A) pop <- "A"
+  else if (indiv_name %in% pop_G) pop <- "G"
+  else if (indiv_name %in% pop_C) pop <- "C"
+  else if (indiv_name %in% pop_D) pop <- "D"
+  else if (indiv_name %in% pop_hb) pop <- "hb"
+  else if (indiv_name %in% pop_B) pop <- "B"
+  else if (indiv_name %in% pop_O) pop <- "O"
+  else if (indiv_name %in% pop_E) pop <- "E"
+  else if (indiv_name %in% pop_R) pop <- "R"
+  else if (indiv_name %in% pop_V) pop <- "V"
+  
+  # Ajouter à notre dataframe de résultats avec les noms modifiés
+  results_homo <- rbind(results_homo, data.frame(Individual = indiv_name, 
+                                       Population = pop,
+                                       Superfamily = "Gypsy",  # Modifié RLG -> Gypsy
+                                       Count_homo = sum_RLG_homo))
+  results_homo <- rbind(results_homo, data.frame(Individual = indiv_name, 
+                                       Population = pop,
+                                       Superfamily = "Copia",  # Modifié RLC -> Copia
+                                       Count_homo = sum_RLC_homo))
+}
+
+# Calculer les proportions
+# Grouper par individu
+library(dplyr)
+library(tidyr)
+totals_by_indiv_homo <- data %>%
+  summarise(across(4:123, ~ sum(!is.na(.)))) %>%
+  pivot_longer(cols = everything(), names_to = "Individual", values_to = "Total")
+
+# Joindre les totaux et calculer les proportions
+results_homo <- results_homo %>%
+  left_join(totals_by_indiv_homo, by = "Individual") %>%
+  mutate(Proportion_homo = Count_homo / Total)
+
+# Grouper les populations selon les catégories
+results_homo <- results_homo %>%
+  mutate(Population_Group = case_when(
+    Population %in% c("A", "G") ~ "AG",
+    Population == "C" ~ "C",
+    Population == "D" ~ "D",
+    Population == "hb" ~ "hb",
+    Population %in% c("B", "O") ~ "OB",
+    Population %in% c("E", "R") ~ "ER",
+    Population == "V" ~ "V",
+    TRUE ~ "Unknown"
+  ))
+
+# Réorganiser les niveaux de la variable Population_Group
+results_homo$Population_Group <- factor(results_homo$Population_Group, 
+                             levels = c("AG", "C", "D", "hb", "OB", "ER", "V", "Unknown"))
+
+# Vérifier combien d'individus sont assignés à chaque population
+print("Nombre d'individus par population:")
+print(table(results_homo$Population_Group))
+
+# Créer le barplot empilé (stacked), groupé par population
+library(ggplot2)
+ggplot(results_homo, aes(x = Individual, y = Proportion_homo, fill = Superfamily)) +
+  geom_bar(stat = "identity") +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5, size = 6),
+        strip.text = element_text(size = 10, face = "bold"),
+        panel.spacing = unit(0.2, "lines"),
+        plot.title = element_text(hjust = 0.5)) +  # Centrer le titre
+  labs(title = "Proportion d'homozygotes Gypsy et Copia par individu et population de Coffea canephora",
+       x = "Individus",
+       y = "Homozygotie",
+       fill = "Super-famille RT-LTR") +
+  scale_fill_manual(values = c("Gypsy" = "#ADD8E6", "Copia" = "#B39DDB"))
+
+
+### autre représentation
+ggplot(results_homo, aes(x = Individual, y = Proportion_homo, fill = Superfamily)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +  # Ajout des bordures
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  theme_minimal() +  # Thème plus épuré
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),  # Titres des facettes 
+    panel.spacing = unit(0.2, "lines"),  # Espacement entre les facettes
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),  # Centrage et mise en forme du titre
+    legend.title = element_text(size = 8, face = "bold"),  # Titre de la légende 
+    legend.text = element_text(size = 7),  # Texte de la légende 
+    axis.title = element_text(size = 10, face = "bold"),  # Titres des axes
+    axis.text.x = element_blank(),  # Supprime les noms des individus
+  axis.ticks.x = element_blank()  # Supprime aussi les petits traits de graduation des individus
+  ) +
+  labs(
+    title = "Proportion d'homozygotes Gypsy et Copia par individu et population de Caféiers robusta",
+    x = "Individus par population",
+    y = "Homozygotie",
+    fill = "Super-famille RT-LTR"
+  ) +
+  scale_fill_manual(values = c("Gypsy" = "#63C5B8", "Copia" = "#FFA07A"))  # Palette de couleurs améliorée
+```
+
+#### Par Types\>Superfamilles\>familles TEs
+
+```{r}
+# Chargement du fichier
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer une liste de populations basée sur Group_analysis
+populations <- split(correspondance$formatted_id, correspondance$Group_analysis)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+
+# Conversion des colonnes d'individus en numérique
+for (i in 4:123) {
+  data[, i] <- as.numeric(as.character(data[, i]))
+}
+
+# Chargement des bibliothèques nécessaires
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Création d'un dataframe pour stocker les résultats
+results_homo_byFam <- data.frame()
+
+# Pour chaque individu, calculer la somme des valeurs pour chaque famille au sein des superfamilles RLG et RLC
+for (i in 4:123) {
+  indiv_name <- colnames(data)[i]
+  
+  # Obtenir toutes les familles uniques pour RLG (Gypsy) et RLC (Copia)
+  gypsy_families <- unique(data$Family[data$Superfamily == "RLG"])
+  copia_families <- unique(data$Family[data$Superfamily == "RLC"])
+  
+  # Déterminer la population de l'individu
+  pop <- "Unknown"
+  if (indiv_name %in% pop_A) pop <- "A"
+  else if (indiv_name %in% pop_G) pop <- "G"
+  else if (indiv_name %in% pop_C) pop <- "C"
+  else if (indiv_name %in% pop_D) pop <- "D"
+  else if (indiv_name %in% pop_hb) pop <- "hb"
+  else if (indiv_name %in% pop_B) pop <- "B"
+  else if (indiv_name %in% pop_O) pop <- "O"
+  else if (indiv_name %in% pop_E) pop <- "E"
+  else if (indiv_name %in% pop_R) pop <- "R"
+  else if (indiv_name %in% pop_V) pop <- "V"
+  
+  # Pour chaque famille Gypsy, calculer la somme et ajouter au dataframe des résultats
+  for (family in gypsy_families) {
+    sum_family <- sum(data[(data$Superfamily == "RLG") & (data$Family == family), i] == 1)
+    results_homo_byFam <- rbind(results_homo_byFam, data.frame(Individual = indiv_name, 
+                                         Population = pop,
+                                         Superfamily = "Gypsy",
+                                         Family = family,
+                                         Count = sum_family))
+  }
+  
+  # Pour chaque famille Copia, calculer la somme et ajouter au dataframe des résultats
+  for (family in copia_families) {
+    sum_family <- sum(data[data$Superfamily == "RLC" & data$Family == family, i] == 1)
+    results_homo_byFam <- rbind(results_homo_byFam, data.frame(Individual = indiv_name, 
+                                         Population = pop,
+                                         Superfamily = "Copia",
+                                         Family = family,
+                                         Count = sum_family))
+  }
+}
+
+# Calculer les totaux par individu
+totals_by_indiv <- data %>%
+  summarise(across(4:123, ~ sum(!is.na(.)))) %>%
+  pivot_longer(cols = everything(), names_to = "Individual", values_to = "Total")
+
+# Joindre les totaux et calculer les proportions
+results_homo_byFam <- results_homo_byFam %>%
+  left_join(totals_by_indiv, by = "Individual") %>%
+  mutate(Proportion = Count / Total)
+
+# Grouper les populations selon les catégories
+results_homo_byFam <- results_homo_byFam %>%
+ mutate(Population_Group = case_when(
+    Population %in% c("A", "G") ~ "AG",
+    Population == "C" ~ "C",
+    Population == "D" ~ "D",
+    Population == "hb" ~ "hb",
+    Population %in% c("B", "O") ~ "OB",
+    Population %in% c("E", "R") ~ "ER",
+    Population == "V" ~ "V",
+    TRUE ~ "Unknown"
+  ))
+
+# Réorganiser les niveaux de la variable Population_Group
+results_homo_byFam$Population_Group <- factor(results_homo_byFam$Population_Group, 
+                             levels = c("AG", "C", "D", "hb", "OB", "ER", "V", "Unknown"))
+
+# Vérifier combien d'individus sont assignés à chaque population
+print("Nombre d'individus par population:")
+print(table(results_homo_byFam$Population_Group))
+
+# Créer un graphique pour les familles de Gypsy
+ggplot(results_homo_byFam[results_homo_byFam$Superfamily == "Gypsy",], 
+       aes(x = Individual, y = Proportion, fill = Family)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) +
+  labs(
+    title = "Charge en TEs homozygotes des familles Gypsy par individu et population de Caféiers robusta",
+    x = "Individus par population",
+    y = "Charge en TEs homozygotes ",
+    fill = "Superfamille Gypsy"
+  ) +
+  scale_fill_viridis_d(option = "plasma")  # Palette de couleurs pour différencier les familles
+
+# Créer un graphique pour les familles de Copia
+ggplot(results_homo_byFam[results_homo_byFam$Superfamily == "Copia",], 
+       aes(x = Individual, y = Proportion, fill = Family)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) +
+  labs(
+    title = "Charge en TEs homozygotes des familles Copia par individu et population de Caféiers robusta",
+    x = "Individus par population",
+    y = "Charge en TEs homozygotes",
+    fill = "Superfamille Copia"
+  ) +
+  scale_fill_viridis_d(option = "viridis")  # Palette de couleurs différente pour Copia
+
+# Un résumé statistique de la distribution des familles par population
+family_summary_homo_byFam <- results_homo_byFam %>%
+  group_by(Population_Group, Superfamily, Family) %>%
+  summarize(
+    Mean_Count = mean(Count, na.rm = TRUE),
+    Mean_Proportion = mean(Proportion, na.rm = TRUE),
+    SD_Proportion = sd(Proportion, na.rm = TRUE),
+    .groups = "drop"  # Ceci supprimera tous les groupements après summarize
+  ) %>%
+  arrange(Population_Group, Superfamily, desc(Mean_Proportion))
+
+# Afficher le résumé
+print(family_summary_homo_byFam)
+```
+
+### Ratio hétérozygote/homozygote TEs
+
+```{r}
+# Chargement des bibliothèques
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Chargement du fichier
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer une liste de populations basée sur Group_analysis
+populations <- split(correspondance$formatted_id, correspondance$Group_analysis)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+
+# Conversion des colonnes d'individus en numérique
+data[, 4:123] <- lapply(data[, 4:123], function(x) as.numeric(as.character(x)))
+
+# Création d'un dataframe pour stocker les résultats
+results_ratio <- data.frame()
+
+# Calcul des ratios par individu
+for (i in 4:123) {
+  indiv_name <- colnames(data)[i]
+  
+  # Calcul du nombre de 1 et de 2 pour chaque super-famille
+  sum_RLG_1 <- sum(data[data$Superfamily == "RLG", i] == 1, na.rm = TRUE)
+  sum_RLG_2 <- sum(data[data$Superfamily == "RLG", i] == 2, na.rm = TRUE)
+  sum_RLG_ratio <- ifelse(sum_RLG_2 == 0, NA, sum_RLG_1 / (sum_RLC_1+sum_RLC_2))  # Évite la division par zéro
+  
+  sum_RLC_1 <- sum(data[data$Superfamily == "RLC", i] == 1, na.rm = TRUE)
+  sum_RLC_2 <- sum(data[data$Superfamily == "RLC", i] == 2, na.rm = TRUE)
+  sum_RLC_ratio <- ifelse(sum_RLC_2 == 0, NA, sum_RLC_1 / (sum_RLC_1+sum_RLC_2))  # Évite la division par zéro
+  
+  # Identifier la population de l'individu
+  pop <- "Unknown"
+  for (p in names(populations)) {
+    if (indiv_name %in% populations[[p]]) {
+      pop <- p
+      break
+    }
+  }
+  
+  # Ajout des résultats
+  results_ratio <- rbind(results_ratio, 
+                         data.frame(Individual = indiv_name, 
+                                    Population = pop,
+                                    Superfamily = "Gypsy",
+                                    Sum_1 = sum_RLG_1,
+                                    Sum_2 = sum_RLG_2,
+                                    Ratio = sum_RLG_ratio))
+  results_ratio <- rbind(results_ratio, 
+                         data.frame(Individual = indiv_name, 
+                                    Population = pop,
+                                    Superfamily = "Copia",
+                                    Sum_1 = sum_RLC_1,
+                                    Sum_2 = sum_RLC_2,
+                                    Ratio = sum_RLC_ratio))
+}
+
+# Grouper les populations selon les catégories
+results_ratio <- results_ratio %>%
+  mutate(Population_Group = case_when(
+    Population %in% c("A", "G") ~ "AG",
+    Population == "C" ~ "C",
+    Population == "D" ~ "D",
+    Population == "hb" ~ "hb",
+    Population %in% c("B", "O") ~ "OB",
+    Population %in% c("E", "R") ~ "ER",
+    Population == "V" ~ "V",
+    TRUE ~ "Unknown"
+  ))
+
+# Réorganiser les niveaux de Population_Group
+results_ratio$Population_Group <- factor(results_ratio$Population_Group, 
+                                         levels = c("AG", "C", "D", "hb", "OB", "ER", "V", "Unknown"))
+
+# Afficher le nombre d'individus par population
+print("Nombre d'individus par population:")
+print(table(results_ratio$Population_Group))
+
+
+# Trier les individus par ratio (ordre décroissant dans chaque population)
+results_ratio <- results_ratio %>%
+  arrange(Population_Group, desc(Ratio)) %>%
+  mutate(Individual = factor(Individual, levels = unique(Individual)))  # Fixer l'ordre dans ggplot
+
+# Filtrer les valeurs NA avant la visualisation
+results_ratio <- results_ratio %>% filter(!is.na(Ratio))
+
+# autre visu
+ggplot(results_ratio, aes(x = Individual, y = Ratio, fill = Superfamily)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +  # Ajout des bordures
+  geom_hline(yintercept = 1, linetype = "dashed", color = "grey20") +  # Ligne de référence
+  facet_grid(Superfamily ~ Population_Group, scales = "free_x", space = "free_x") +  # Sépare Gypsy/Copia et regroupe par population
+  theme_minimal() +  # Thème plus épuré
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),  # Titres des facettes 
+    panel.spacing = unit(0.2, "lines"),  # Espacement entre les facettes
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),  # Centrage et mise en forme du titre
+    legend.title = element_text(size = 8, face = "bold"),  # Titre de la légende 
+    legend.text = element_text(size = 7),  # Texte de la légende 
+    axis.title = element_text(size = 10, face = "bold"),  # Titres des axes
+    axis.text.x = element_blank(),  # Supprime les noms des individus
+    axis.ticks.x = element_blank()  # Supprime aussi les petits traits de graduation des individus
+  ) +
+  labs(
+    title = "Ratio des hétérozygotes sur les homozygotes pour Gypsy et Copia par individu et population",
+    x = "Individus par population",
+    y = "Ratio hétérozygotes/homozygotes",
+    fill = "Super-famille RT-LTR"
+  ) +
+  scale_fill_manual(values = c("Gypsy" = "#63C5B8", "Copia" = "#FFA07A"))  # Palette de couleurs améliorée
+
+
+
+ggplot(results_ratio, aes(x = Individual, y = Ratio, fill = interaction(Superfamily, Population_Group))) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +  # Ajout des bordures
+  geom_hline(yintercept = 1, linetype = "dashed", color = "grey20") +  # Ligne de référence
+  facet_grid(Superfamily ~ Population_Group, scales = "free_x", space = "free_x") +  # Sépare Gypsy/Copia et regroupe par population
+  theme_minimal() +  # Thème plus épuré
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),  # Titres des facettes 
+    panel.spacing = unit(0.2, "lines"),  # Espacement entre les facettes
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),  # Centrage et mise en forme du titre
+    legend.title = element_text(size = 8, face = "bold"),  # Titre de la légende 
+    legend.text = element_text(size = 7),  # Texte de la légende 
+    axis.title = element_text(size = 10, face = "bold"),  # Titres des axes
+    axis.text.x = element_blank(),  # Supprime les noms des individus
+    axis.ticks.x = element_blank()  # Supprime aussi les petits traits de graduation des individus
+  ) +
+  labs(
+    title = "Ratio des hétérozygotes sur les homozygotes pour Gypsy et Copia par individu et population",
+    x = "Individus par population",
+    y = "Ratio hétérozygotes/homozygotes",
+    fill = "Population & Superfamily"
+  ) +
+  scale_fill_manual(values = c(
+    # Tons BLEUS pour Gypsy
+    "Gypsy.A" = "#4A9C89",  # Teinte turquoise pour A
+    "Gypsy.G" = "#63C5B8",  # Bleu-turquoise principal
+    "Gypsy.C" = "#86E2D5",  # Turquoise clair
+    "Gypsy.D" = "#2F6B5F",  # Bleu-vert foncé
+    "Gypsy.hb" = "#2B8A74", # Vert d'eau foncé
+    "Gypsy.OB" = "#5DC1B9",  # Bleu clair pour OB
+    "Gypsy.ER" = "#3DAE9C",  # Bleu-vert soutenu
+    "Gypsy.V" = "#8EDDD9",  # Bleu pastel
+    "Gypsy.Unknown" = "grey50",  # Pour les inconnus
+
+    # Tons ORANGES pour Copia
+    "Copia.A" = "#E2725B",  # Rouge-orangé pour A
+    "Copia.G" = "#FFA07A",  # Orange principal
+    "Copia.C" = "#FFBEA3",  # Orange pastel
+    "Copia.D" = "#D45D5D",  # Rouge-brun
+    "Copia.hb" = "#D98B6A",  # Orange terreux
+    "Copia.OB" = "#F4A460",  # Sable doré
+    "Copia.ER" = "#FF8C69",  # Corail foncé
+    "Copia.V" = "#FFC4A3",  # Pêche pastel
+    "Copia.Unknown" = "grey50"  # Pour les inconnus
+  ))
+```
+
+#### Par Types\>Superfamilles\>familles TEs
+
+```{r}
+# Chargement du fichier
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer une liste de populations basée sur Group_analysis
+populations <- split(correspondance$formatted_id, correspondance$Group_analysis)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+# Conversion des colonnes d'individus en numérique
+for (i in 4:123) {
+  data[, i] <- as.numeric(as.character(data[, i]))
+}
+
+# Chargement des bibliothèques nécessaires
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Création d'un dataframe pour stocker les résultats
+results_ratio_byFam <- data.frame()
+
+# Pour chaque individu, calculer le ratio entre hétérozygotes et homozygotes pour chaque famille
+for (i in 4:123) {
+  indiv_name <- colnames(data)[i]
+  
+  # Obtenir toutes les familles uniques pour RLG (Gypsy) et RLC (Copia)
+  gypsy_families <- unique(data$Family[data$Superfamily == "RLG"])
+  copia_families <- unique(data$Family[data$Superfamily == "RLC"])
+  
+  # Déterminer la population de l'individu
+  pop <- "Unknown"
+  if (indiv_name %in% pop_A) pop <- "A"
+  else if (indiv_name %in% pop_G) pop <- "G"
+  else if (indiv_name %in% pop_C) pop <- "C"
+  else if (indiv_name %in% pop_D) pop <- "D"
+  else if (indiv_name %in% pop_hb) pop <- "hb"
+  else if (indiv_name %in% pop_B) pop <- "B"
+  else if (indiv_name %in% pop_O) pop <- "O"
+  else if (indiv_name %in% pop_E) pop <- "E"
+  else if (indiv_name %in% pop_R) pop <- "R"
+  else if (indiv_name %in% pop_V) pop <- "V"
+  
+  # Pour chaque famille Gypsy, calculer le nombre de 1 et de 2, puis le ratio
+  for (family in gypsy_families) {
+    count_hetero_family <- sum(data[data$Superfamily == "RLG" & data$Family == family, i] == 1)
+    count_homo_family <- sum(data[data$Superfamily == "RLG" & data$Family == family, i] == 2)
+    #ratio_family <- ifelse(count_homo_family == 0, NA, count_hetero_family / (count_homo_family + count_hetero_family))
+    heterozygotie <- count_hetero_family / (count_homo_family + count_hetero_family)
+    
+    results_ratio_byFam <- rbind(results_ratio_byFam, data.frame(
+      Individual = indiv_name, 
+      Population = pop,
+      Superfamily = "Gypsy",
+      Family = family,
+      Count_hetero = count_hetero_family,
+      Count_homo = count_homo_family,
+      Ratio = heterozygotie
+    ))
+  }
+  
+  # Pour chaque famille Copia, calculer le nombre de 1 et de 2, puis le ratio
+  for (family in copia_families) {
+    count_hetero_family <- sum(data[data$Superfamily == "RLC" & data$Family == family, i] == 1, na.rm = TRUE)
+    count_homo_family <- sum(data[data$Superfamily == "RLC" & data$Family == family, i] == 2, na.rm = TRUE)
+   # ratio_family <- ifelse(count_homo_family == 0, NA, count_hetero_family / (count_homo_family + count_hetero_family))
+     heterozygotie <- count_hetero_family / (count_homo_family + count_hetero_family)
+    
+    results_ratio_byFam <- rbind(results_ratio_byFam, data.frame(
+      Individual = indiv_name, 
+      Population = pop,
+      Superfamily = "Copia",
+      Family = family,
+      Count_hetero = count_hetero_family,
+      Count_homo = count_homo_family,
+      Ratio = heterozygotie
+    ))
+  }
+}
+
+# Grouper les populations selon les catégories
+results_ratio_byFam <- results_ratio_byFam %>%
+  mutate(Population_Group = case_when(
+    Population %in% c("A", "G") ~ "AG",
+    Population == "C" ~ "C",
+    Population == "D" ~ "D",
+    Population == "hb" ~ "hb",
+    Population %in% c("B", "O") ~ "OB",
+    Population %in% c("E", "R") ~ "ER",
+    Population == "V" ~ "V",
+    TRUE ~ "Unknown"
+  ))
+
+# Réorganiser les niveaux de la variable Population_Group
+results_ratio_byFam$Population_Group <- factor(results_ratio_byFam$Population_Group, 
+                                           levels = c("AG", "C", "D", "hb", "OB", "ER", "V", "Unknown"))
+
+# Trier les individus par ratio (ordre décroissant dans chaque population)
+results_ratio_byFam <- results_ratio_byFam %>%
+  arrange(Population_Group, desc(Ratio)) %>%
+  mutate(Individual = factor(Individual, levels = unique(Individual)))  # Fixer l'ordre dans ggplot
+
+
+# Filtrer les valeurs NA avant la visualisation
+results_ratio_byFam <- results_ratio_byFam %>% filter(!is.na(Ratio))
+
+# Créer un graphique pour les familles de Gypsy - Ratio par famille
+ggplot(results_ratio_byFam[results_ratio_byFam$Superfamily == "Gypsy",], 
+       aes(x = Individual, y = Ratio, fill = Family)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "grey20") +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) +
+  labs(
+    title = "Ratio hétérozygotes/homozygotes des familles Gypsy par individu et population",
+    x = "Individus par population",
+    y = "Ratio hétérozygotes/homozygotes",
+    fill = "Famille Gypsy"
+  ) +
+  scale_fill_viridis_d(option = "plasma")
+
+# Créer un graphique pour les familles de Copia - Ratio par famille
+ggplot(results_ratio_byFam[results_ratio_byFam$Superfamily == "Copia",], 
+       aes(x = Individual, y = Ratio, fill = Family)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "grey20") +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) +
+  labs(
+    title = "Ratio hétérozygotes/homozygotes des familles Copia par individu et population",
+    x = "Individus par population",
+    y = "Ratio hétérozygotes/homozygotes",
+    fill = "Famille Copia"
+  ) +
+  scale_fill_viridis_d(option = "viridis")
+
+# Un résumé statistique du ratio par famille et population
+family_ratio_summary <- results_ratio_byFam %>%
+  group_by(Population_Group, Superfamily, Family) %>%
+  summarize(
+    Mean_Ratio = mean(Ratio, na.rm = TRUE),
+    Median_Ratio = median(Ratio, na.rm = TRUE),
+    SD_Ratio = sd(Ratio, na.rm = TRUE),
+    Count_NA = sum(is.na(Ratio)),
+    Total_Count = n(),
+    .groups = "drop"
+  ) %>%
+  # Ajouter le pourcentage de valeurs non-NA
+  mutate(Percent_Valid = 100 * (Total_Count - Count_NA) / Total_Count) %>%
+  arrange(Population_Group, Superfamily, desc(Mean_Ratio))
+
+# Afficher le résumé
+print(family_ratio_summary)
+
+# On peut également faire un boxplot pour comparer la distribution des ratios par famille
+ggplot(results_ratio_byFam, aes(x = Family, y = Ratio, fill = Superfamily)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "grey20") +
+  facet_wrap(~Population_Group, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Distribution des ratios hétérozygotes/homozygotes par famille et population",
+    x = "Famille",
+    y = "Ratio hétérozygotes/homozygotes",
+    fill = "Superfamille"
+  ) +
+  scale_fill_manual(values = c("Gypsy" = "#63C5B8", "Copia" = "#FFA07A"))
+
+# Test autre représentration
+ggplot(results_ratio_byFam, aes(x = Family, y = Ratio, fill = Superfamily)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "grey20") +
+  facet_grid(Superfamily ~ Population_Group, scales = "free_x") + # Séparation par superfamille
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Distribution des ratios hétérozygotes/homozygotes par famille et population",
+    x = "Famille",
+    y = "Ratio hétérozygotes/homozygotes",
+    fill = "Superfamille"
+  ) +
+  scale_fill_manual(values = c("Gypsy" = "#63C5B8", "Copia" = "#FFA07A"))
+
+
+
+
+
+
+
+
+library(ggplot2)
+library(gridExtra)
+
+# Filtrer les données pour chaque superfamille
+gypsy_data <- results_ratio_byFam[results_ratio_byFam$Superfamily == "Gypsy", ]
+copia_data <- results_ratio_byFam[results_ratio_byFam$Superfamily == "Copia", ]
+
+# Graphique pour Gypsy (plasma)
+plot_gypsy <- ggplot(gypsy_data, aes(x = Family, y = Ratio, fill = Family)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1, linetype = "solid", color = "red", linewidth = 0.3, size=2) +  # Ligne en y = 1
+  facet_wrap(~Population_Group, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Gypsy - Distribution des ratios hétérozygotes/homozygotes",
+    x = "Famille",
+    y = "Ratio hétérozygotes/homozygotes",
+    fill = "Famille Gypsy"
+  ) +
+  scale_fill_viridis_d(option = "plasma")  # Palette plasma pour Gypsy
+
+# Graphique pour Copia (viridis)
+plot_copia <- ggplot(copia_data, aes(x = Family, y = Ratio, fill = Family)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1, linetype = "solid", color = "red", linewidth = 0.3, size=2) +  # Ligne en y = 1
+  facet_wrap(~Population_Group, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Copia - Distribution des ratios hétérozygotes/homozygotes",
+    x = "Famille",
+    y = "Ratio hétérozygotes/homozygotes",
+    fill = "Famille Copia"
+  ) +
+  scale_fill_viridis_d(option = "viridis")  # Palette viridis pour Copia
+
+# Afficher les deux graphiques côte à côte
+grid.arrange(plot_gypsy, plot_copia, ncol = 2)
+
+```
+
+un **test binomial** (`binom.test()`) pour chaque famille afin de comparer le nombre d'hétérozygotes et d'homozygotes.
+
+Hypothèse nulle (H0​) : le nombre d'hétérozygotes est **égal** au nombre d'homozygotes (proportion = 0.5).
+
+Hypothèse alternative (H1​) : il y a **plus d'hétérozygotes** qu'attendu sous H0​.
+
+**Test unilatéral** (alternative = "greater") pour vérifier si les hétérozygotes sont **significativement plus nombreux** que les homozygotes.
+
+Le test du chi² est souvent utilisé pour tester l’indépendance entre deux variables dans des tableaux de contingence. Mais ici, nous testons si une proportion diffère d'une valeur fixe (0.5). Si nos effectifs sont petits, le test binomial est plus fiable car il est exact (contrairement au chi² qui est approximatif).
+
+```{r}
+# Créer une liste pour stocker les résultats
+test_results <- list()
+
+# Boucle sur chaque famille
+for (fam in unique(results_ratio_byFam$Family)) {
+  subset_data <- results_ratio_byFam[results_ratio_byFam$Family == fam, ]
+  
+  # Compter le nombre d'hétérozygotes et d'homozygotes
+  n_hetero <- sum(subset_data$Count_hetero, na.rm = TRUE)
+  n_homo <- sum(subset_data$Count_homo, na.rm = TRUE)
+  
+  # Effectuer le test binomial si on a assez de données
+  if (n_hetero + n_homo > 0) { # vérifie qu'il y a bien des données pour la famille
+    test <- binom.test(n_hetero, n_hetero + n_homo, p = 0.5, alternative = "greater") # Nombre d'hétérozygotes observés, Nombre total d’individus, Hypothèse nulle : on s’attend à 50% d'hétérozygotes, on teste si la proportion d'hétérozygotes est significativement supérieure à 50%
+    test_results[[fam]] <- data.frame(
+      Family = fam,
+      p_value = test$p.value,
+      heterozygotes = n_hetero,
+      homozygotes = n_homo
+    )
+  }
+}
+
+# Convertir la liste en data frame
+test_results_df <- do.call(rbind, test_results)
+
+# Afficher les familles où le nombre d'hétérozygotes est significativement plus grand (p < 0.05)
+significant_families <- test_results_df[test_results_df$p_value < 0.05, ]
+print(significant_families)
+
+
+
+
+# Créer une liste pour stocker les résultats des tests
+test_results <- list()
+
+# Boucle sur chaque combinaison unique de Family et Population_Group
+for (fam in unique(results_ratio_byFam$Family)) {
+  for (pop in unique(results_ratio_byFam$Population_Group)) {
+    
+    # Filtrer les données
+    subset_data <- results_ratio_byFam[results_ratio_byFam$Family == fam & results_ratio_byFam$Population_Group == pop, ]
+    
+    # Calculer le nombre d'hétérozygotes et d'homozygotes
+    n_hetero <- sum(subset_data$Count_hetero, na.rm = TRUE)
+    n_homo <- sum(subset_data$Count_homo, na.rm = TRUE)
+    
+    # Vérifier qu'il y a des données suffisantes
+    if (n_hetero + n_homo > 0) { 
+      test <- binom.test(n_hetero, n_hetero + n_homo, p = 0.5, alternative = "greater")
+      
+      # Ajouter les résultats
+      test_results[[paste(fam, pop, sep = "_")]] <- data.frame(
+        Family = fam,
+        Population_Group = pop,
+        p_value = test$p.value,
+        Significance = ifelse(test$p.value < 0.001, "***",
+                              ifelse(test$p.value < 0.01, "**",
+                                     ifelse(test$p.value < 0.05, "*", "ns")))
+      )
+    }
+  }
+}
+
+# Convertir en data frame
+test_results_df <- do.call(rbind, test_results)
+
+# Fusionner avec les données d'origine
+results_ratio_byFam_with_significance <- merge(results_ratio_byFam, test_results_df, 
+                                   by = c("Family", "Population_Group"), 
+                                   all.x = TRUE)
+# enregistrer le doc
+write.table(results_ratio_byFam_with_significance, "~/M2/Cafeier/Codes/Matrice_indv/results_ratio_byFam_with_significance.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+
+library(ggplot2)
+library(gridExtra)
+
+# Filtrer les données pour chaque superfamille
+gypsy_data <- results_ratio_byFam_with_significance[results_ratio_byFam_with_significance$Superfamily == "Gypsy", ]
+copia_data <- results_ratio_byFam_with_significance[results_ratio_byFam_with_significance$Superfamily == "Copia", ]
+
+# Graphique pour Gypsy
+plot_gypsy <- ggplot(gypsy_data, aes(x = Family, y = Ratio, fill = Family)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 0.5, linetype = "solid", color = "red", linewidth = 0.3, size = 2) +  
+  facet_wrap(~Population_Group, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Gypsy - Distribution des ratios hétérozygotes/(hétérozygotes+homozygotes)",
+    x = "Famille",
+    y = "Ratio hétérozygotes/(hétérozygotes+homozygotes)",
+    fill = "Famille Gypsy"
+  ) +
+  scale_fill_viridis_d(option = "plasma") +
+  
+  # Ajouter la significativité
+  geom_text(data = unique(gypsy_data[, c("Family", "Population_Group", "Significance")]),
+            aes(x = Family, y = max(gypsy_data$Ratio, na.rm = TRUE) + 0.2, label = Significance), 
+            size = 2, fontface = "bold", color = "grey20")
+
+# Graphique pour Copia
+plot_copia <- ggplot(copia_data, aes(x = Family, y = Ratio, fill = Family)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 0.5, linetype = "solid", color = "red", linewidth = 0.3, size = 2) +  
+  facet_wrap(~Population_Group, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Copia - Distribution des ratios hétérozygotes/(hétérozygotes+homozygotes)",
+    x = "Famille",
+    y = "Ratio hétérozygotes/(hétérozygotes+homozygotes)",
+    fill = "Famille Copia"
+  ) +
+  scale_fill_viridis_d(option = "viridis") +
+  
+  # Ajouter la significativité
+  geom_text(data = unique(copia_data[, c("Family", "Population_Group", "Significance")]),
+            aes(x = Family, y = max(copia_data$Ratio, na.rm = TRUE) + 0.2, label = Significance), 
+            size = 2, fontface = "italic", color = "grey20")
+
+# Afficher les deux graphiques côte à côte
+grid.arrange(plot_gypsy, plot_copia, ncol = 2)
+
+```
+
+## Fréquences TEs
+
+##### Fonction pour calculer la fréquence des éléments transposables
+
+```{r}
+# Fonction pour calculer la fréquence des éléments transposables
+calculate_te_frequency <- function(df) {
+  # Identifier les colonnes d'information TE et les colonnes individuelles
+  info_cols <- c("MEI", "CHROM", "POS")
+  meta_cols <- c("REF", "ALT", "SVLEN", "X0START", "X0END", "MESTRAND", "Type", "Superfamily", "Family", "Line")
+  
+  # Toutes les colonnes entre POS et REF sont considérées comme des individus
+  all_cols <- colnames(df)
+  pos_index <- which(all_cols == "POS")
+  ref_index <- which(all_cols == "REF")
+  
+  # Colonnes des individus
+  individual_cols <- all_cols[(pos_index + 1):(ref_index - 1)]
+  
+  # Créer un dataframe pour les résultats
+  results <- data.frame()
+  
+  # Pour chaque ligne du dataframe (chaque élément transposable)
+  for (i in 1:nrow(df)) {
+    # Extraire les données des individus pour cette position
+    individual_data <- as.numeric(as.character(df[i, individual_cols]))
+    
+    # Compter le nombre d'individus homozygotes (2), hétérozygotes (1) et absents (0)
+    homozygotes <- sum(individual_data == 2, na.rm = TRUE)
+    heterozygotes <- sum(individual_data == 1, na.rm = TRUE)
+    absents <- sum(individual_data == 0, na.rm = TRUE)
+    
+    # Gestion des NA
+    na_count <- sum(is.na(individual_data))
+    
+    # Calculer le nombre total d'individus (sans compter les NA)
+    total_individuals <- homozygotes + heterozygotes + absents
+    
+    # Calculer le nombre d'allèles avec l'élément transposable
+    allele_count <- (2 * homozygotes) + heterozygotes
+    
+    # Calculer le nombre total d'allèles
+    total_alleles <- 2 * total_individuals
+    
+    # Calculer la fréquence
+    frequency <- ifelse(total_alleles > 0, allele_count / total_alleles, NA)
+    
+    # Extraire les informations d'identification pour cet élément
+    mei <- as.character(df[i, "MEI"])
+    chrom <- as.character(df[i, "CHROM"])
+    pos <- as.numeric(as.character(df[i, "POS"]))
+    
+    # Extraire les métadonnées
+    type <- if("Type" %in% colnames(df)) as.character(df[i, "Type"]) else NA
+    superfamily <- if("Superfamily" %in% colnames(df)) as.character(df[i, "Superfamily"]) else NA
+    family <- if("Family" %in% colnames(df)) as.character(df[i, "Family"]) else NA
+    line <- if("Line" %in% colnames(df)) as.character(df[i, "Line"]) else NA
+    
+    # Créer une ligne pour les résultats
+    result_row <- data.frame(
+      MEI = mei,
+      CHROM = chrom,
+      POS = pos,
+      Type = type,
+      Superfamily = superfamily,
+      Family = family,
+      Line = line,
+      Homozygotes = homozygotes,
+      Heterozygotes = heterozygotes,
+      Absents = absents,
+      NA_Count = na_count,
+      Total_Individuals = total_individuals,
+      TEs_Count = allele_count,
+      Total_TEs = total_alleles,
+      Frequency = frequency,
+      stringsAsFactors = FALSE
+    )
+    
+    # Ajouter la ligne aux résultats
+    results <- rbind(results, result_row)
+  }
+  
+  return(results)
+}
+
+```
+
+##### Fonction pour analyser et visualiser les résultats
+
+```{r}
+# Fonction pour analyser et visualiser les résultats
+analyze_te_frequencies <- function(result_df) {
+  library(dplyr)
+  
+   # Filtrer les fréquences non nulles
+  filtered_df <- result_df %>% filter(Frequency > 0)
+  
+  # Création d'un histogramme des fréquences
+  hist(filtered_df$Frequency, 
+       main = "Distribution des fréquences des éléments transposables",
+       xlab = "Fréquence TEs", 
+       ylab = "Nombre d'occurrences (counts)",
+       breaks = 20,
+       col = "skyblue")
+  
+  # Retourner les statistiques
+  return(list(
+    summary_stats = summary(filtered_df$Frequency),
+    filtered_count = nrow(filtered_df)
+  ))
+}
+```
+
+###### Idem pour Gypsy
+
+```{r}
+# Fonction pour analyser et visualiser les résultats
+analyze_Gypsy_frequencies <- function(result_df) {
+  library(dplyr)
+  
+    # Filtrer les fréquences non nulles
+  filtered_df_gypsy <- result_df %>% filter(Frequency > 0)
+  
+  # Création d'un histogramme des fréquences
+  hist(filtered_df_gypsy$Frequency, 
+       main = "Distribution des fréquences des RT-LTR Gypsy",
+       xlab = "Fréquence RT-LTR Gypsy", 
+       ylab = "Nombre d'occurrences (counts)",
+       breaks = 20,
+       col = "#63C5B8")
+  
+  
+  # Retourner les statistiques
+ return(list(
+    summary_stats = summary(filtered_df$Frequency),
+    filtered_count = nrow(filtered_df)
+  ))
+}
+```
+
+###### Idem pour Copia
+
+```{r}
+# Fonction pour analyser et visualiser les résultats
+analyze_Copia_frequencies <- function(result_df) {
+  library(dplyr)
+  
+      # Filtrer les fréquences non nulles
+  filtered_df_copia <- result_df %>% filter(Frequency > 0)
+
+  # Création d'un histogramme des fréquences
+  hist(filtered_df_copia$Frequency, 
+       main = "Distribution des fréquences des RT-LTR Copia",
+       xlab = "Fréquence RT-LTR Copia", 
+       ylab = "Nombre d'occurrences (counts)",
+       breaks = 20,
+       col = "#FFA07A")
+  
+  
+  # Retourner les statistiques
+ return(list(
+    summary_stats = summary(filtered_df$Frequency),
+    filtered_count = nrow(filtered_df)
+  ))
+}
+```
+
+#### Application au jeu de données complet
+
+! long...!
+
+```{r}
+# Utilisation avec mes données
+Indv_matrix_012_filtered_processed <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+# Calculer les fréquences
+te_frequencies <- calculate_te_frequency(Indv_matrix_012_filtered_processed)
+
+# Enregistrer les résultats dans un fichier
+write.table(te_frequencies, file = "~/M2/Cafeier/Codes/Matrice_indv/TE_frequency_by_position.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+stats <- analyze_te_frequencies(te_frequencies)
+
+
+
+
+### Pour Gypsy ###
+data_Gypsy <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_RLG.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+Gypsy_frequencies <- calculate_te_frequency(data_Gypsy)
+
+# Enregistrer les résultats dans un fichier
+write.table(Gypsy_frequencies, file = "~/M2/Cafeier/Codes/Matrice_indv/Gypsy_frequency_by_position.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+stats_Gypsy <- analyze_Gypsy_frequencies(Gypsy_frequencies)
+
+
+
+
+### Pour Copia ###
+data_Copia <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_RLC.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+Copia_frequencies <- calculate_te_frequency(data_Copia)
+
+# Enregistrer les résultats dans un fichier
+write.table(Copia_frequencies, file = "~/M2/Cafeier/Codes/Matrice_indv/Copia_frequency_by_position.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+stats_Copia <- analyze_Copia_frequencies(Copia_frequencies)
+```
+
+#### Application à la population AG
+
+```{r}
+# Utilisation avec mes données : pop AG
+Indv_matrix_AG <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_AG.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+te_frequencies_popAG <- calculate_te_frequency(Indv_matrix_AG)
+
+# Enregistrer les résultats dans un fichier
+write.table(te_frequencies_popAG, file = "~/M2/Cafeier/Codes/Matrice_indv/TE_frequency_by_position_popAG.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statsAG <- analyze_te_frequencies(te_frequencies_popAG)
+
+
+
+
+### Pour Gypsy ###
+Indv_matrix_AG_Gypsy <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_AG_Gypsy.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+Gypsy_frequencies_popAG <- calculate_te_frequency(Indv_matrix_AG_Gypsy)
+
+# Enregistrer les résultats dans un fichier
+write.table(Gypsy_frequencies_popAG, file = "~/M2/Cafeier/Codes/Matrice_indv/Gypsy_frequency_by_position_popAG.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statsAG_Gypsy <- analyze_Gypsy_frequencies(Gypsy_frequencies_popAG)
+
+### Pour Copia ###
+Indv_matrix_AG_Copia <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_AG_Copia.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+Copia_frequencies_popAG <- calculate_te_frequency(Indv_matrix_AG_Copia)
+
+# Enregistrer les résultats dans un fichier
+write.table(Copia_frequencies_popAG, file = "~/M2/Cafeier/Codes/Matrice_indv/Copia_frequency_by_position_popAG.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statsAG_Copia <- analyze_Copia_frequencies(Copia_frequencies_popAG)
+```
+
+#### Application à la population C
+
+```{r}
+library(progressr)
+
+# Activer le gestionnaire de progression (fonctionne mieuxxx avec Quarto :)))
+handlers("txtprogressbar")  # Alternative simple qui fonctionne bien
+
+# Démarrer la progression (...)
+with_progress({
+  p <- progressor(4)  # Nombre d'étapes
+  
+  # Lire les données
+  p(message = "Lecture des données...")
+  Indv_matrix_C <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_C.txt", header=TRUE, sep="\t")
+
+  # Calculer les fréquences
+  p(message = "Calcul des fréquences TE...")
+  te_frequencies_popC <- calculate_te_frequency(Indv_matrix_C)
+
+  # Enregistrer les résultats
+  p(message = "Sauvegarde des résultats...")
+  write.table(te_frequencies_popC, file = "~/M2/Cafeier/Codes/Matrice_indv/TE_frequency_by_position_popC.txt", 
+              sep = "\t", quote = FALSE, row.names = FALSE)
+
+  # Analyser les résultats
+  p(message = "Analyse des fréquences TE...")
+  statsC <- analyze_te_frequencies(te_frequencies_popC)
+  statsC_bySuperfamTEs <- analyze_te_frequencies_by_SuperfamTEs(te_frequencies_popC)
+})
+
+cat("\n✔️  Traitement total TEs terminé !\n")
+
+
+
+
+
+### Pour Gypsy ###
+Indv_matrix_C_Gypsy <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_C_Gypsy.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+Gypsy_frequencies_popC <- calculate_te_frequency(Indv_matrix_C_Gypsy)
+
+# Enregistrer les résultats dans un fichier
+write.table(Gypsy_frequencies_popC, file = "~/M2/Cafeier/Codes/Matrice_indv/Gypsy_frequency_by_position_popC.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statsC_Gypsy <- analyze_Gypsy_frequencies(Gypsy_frequencies_popC)
+
+
+
+
+### Pour Copia ###
+Indv_matrix_C_Copia <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_C_Copia.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+Copia_frequencies_popC <- calculate_te_frequency(Indv_matrix_C_Copia)
+
+# Enregistrer les résultats dans un fichier
+write.table(Copia_frequencies_popC, file = "~/M2/Cafeier/Codes/Matrice_indv/Copia_frequency_by_position_popC.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statsC_Copia <- analyze_Copia_frequencies(Copia_frequencies_popC)
+```
+
+#### Application à la population D
+
+```{r}
+# Utilisation avec mes données : pop D
+Indv_matrix_D <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_D.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+te_frequencies_popD <- calculate_te_frequency(Indv_matrix_D)
+
+# Enregistrer les résultats dans un fichier
+write.table(te_frequencies_popD, file = "~/M2/Cafeier/Codes/Matrice_indv/TE_frequency_by_position_popD.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statsD <- analyze_te_frequencies(te_frequencies_popD)
+
+### Pour Gypsy ###
+Indv_matrix_D_Gypsy <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_D_Gypsy.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+Gypsy_frequencies_popD <- calculate_te_frequency(Indv_matrix_D_Gypsy)
+
+# Enregistrer les résultats dans un fichier
+write.table(Gypsy_frequencies_popD, file = "~/M2/Cafeier/Codes/Matrice_indv/Gypsy_frequency_by_position_popD.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statsD_Gypsy <- analyze_Gypsy_frequencies(Gypsy_frequencies_popD)
+
+
+
+
+### Pour Copia ###
+Indv_matrix_D_Copia <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_D_Copia.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+Copia_frequencies_popD <- calculate_te_frequency(Indv_matrix_D_Copia)
+
+# Enregistrer les résultats dans un fichier
+write.table(Copia_frequencies_popD, file = "~/M2/Cafeier/Codes/Matrice_indv/Copia_frequency_by_position_popD.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statsD_Copia <- analyze_Copia_frequencies(Copia_frequencies_popD)
+```
+
+#### Application à la population ER
+
+```{r}
+# Utilisation avec mes données : pop D
+Indv_matrix_ER <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_ER.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+te_frequencies_popER <- calculate_te_frequency(Indv_matrix_ER)
+
+# Enregistrer les résultats dans un fichier
+write.table(te_frequencies_popER, file = "~/M2/Cafeier/Codes/Matrice_indv/TE_frequency_by_position_popER.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statsER <- analyze_te_frequencies(te_frequencies_popER)
+
+
+
+
+### Pour Gypsy ###
+Indv_matrix_ER_Gypsy <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_ER_Gypsy.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+Gypsy_frequencies_popER <- calculate_te_frequency(Indv_matrix_ER_Gypsy)
+
+# Enregistrer les résultats dans un fichier
+write.table(Gypsy_frequencies_popER, file = "~/M2/Cafeier/Codes/Matrice_indv/Gypsy_frequency_by_position_popER.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statsER_Gypsy <- analyze_Gypsy_frequencies(Gypsy_frequencies_popER)
+
+
+
+
+### Pour Copia ###
+Indv_matrix_ER_Copia <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_ER_Copia.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+Copia_frequencies_popER <- calculate_te_frequency(Indv_matrix_ER_Copia)
+
+# Enregistrer les résultats dans un fichier
+write.table(Copia_frequencies_popER, file = "~/M2/Cafeier/Codes/Matrice_indv/Copia_frequency_by_position_popER.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statsER_Copia <- analyze_Copia_frequencies(Copia_frequencies_popER)
+```
+
+#### Application à la population hb
+
+```{r}
+# Utilisation avec mes données : pop D
+Indv_matrix_hb <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_hb.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+te_frequencies_pophb <- calculate_te_frequency(Indv_matrix_hb)
+
+# Enregistrer les résultats dans un fichier
+write.table(te_frequencies_pophb, file = "~/M2/Cafeier/Codes/Matrice_indv/TE_frequency_by_position_pophb.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statshb <- analyze_te_frequencies(te_frequencies_pophb)
+
+
+
+### Pour Gypsy ###
+Indv_matrix_hb_Gypsy <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_hb_Gypsy.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+Gypsy_frequencies_pophb <- calculate_te_frequency(Indv_matrix_hb_Gypsy)
+
+# Enregistrer les résultats dans un fichier
+write.table(Gypsy_frequencies_pophb, file = "~/M2/Cafeier/Codes/Matrice_indv/Gypsy_frequency_by_position_pophb.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statshb_Gypsy <- analyze_Gypsy_frequencies(Gypsy_frequencies_pophb)
+
+
+
+
+### Pour Copia ###
+Indv_matrix_hb_Copia <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_hb_Copia.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+Copia_frequencies_pophb <- calculate_te_frequency(Indv_matrix_hb_Copia)
+
+# Enregistrer les résultats dans un fichier
+write.table(Copia_frequencies_pophb, file = "~/M2/Cafeier/Codes/Matrice_indv/Copia_frequency_by_position_pophb.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statshb_Copia <- analyze_Copia_frequencies(Copia_frequencies_pophb)
+```
+
+#### Application à la population OB
+
+```{r}
+# Utilisation avec mes données : pop D
+Indv_matrix_OB <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_OB.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+te_frequencies_popOB <- calculate_te_frequency(Indv_matrix_OB)
+
+# Enregistrer les résultats dans un fichier
+write.table(te_frequencies_popOB, file = "~/M2/Cafeier/Codes/Matrice_indv/TE_frequency_by_position_popOB.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statsOB <- analyze_te_frequencies(te_frequencies_popOB)
+
+
+
+### Pour Gypsy ###
+Indv_matrix_OB_Gypsy <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_OB_Gypsy.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+Gypsy_frequencies_popOB <- calculate_te_frequency(Indv_matrix_OB_Gypsy)
+
+# Enregistrer les résultats dans un fichier
+write.table(Gypsy_frequencies_popOB, file = "~/M2/Cafeier/Codes/Matrice_indv/Gypsy_frequency_by_position_popOB.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statsOB_Gypsy <- analyze_Gypsy_frequencies(Gypsy_frequencies_popOB)
+
+
+
+
+### Pour Copia ###
+Indv_matrix_OB_Copia <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_OB_Copia.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+Copia_frequencies_popOB <- calculate_te_frequency(Indv_matrix_OB_Copia)
+
+# Enregistrer les résultats dans un fichier
+write.table(Copia_frequencies_popOB, file = "~/M2/Cafeier/Codes/Matrice_indv/Copia_frequency_by_position_popOB.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statsOB_Copia <- analyze_Copia_frequencies(Copia_frequencies_popOB)
+```
+
+#### Application à la population V
+
+```{r}
+# Utilisation avec mes données : pop D
+Indv_matrix_V <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_V.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+te_frequencies_popV <- calculate_te_frequency(Indv_matrix_V)
+
+# Enregistrer les résultats dans un fichier
+write.table(te_frequencies_popV, file = "~/M2/Cafeier/Codes/Matrice_indv/TE_frequency_by_position_popV.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statsV <- analyze_te_frequencies(te_frequencies_popV)
+
+
+
+### Pour Gypsy ###
+Indv_matrix_V_Gypsy <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_V_Gypsy.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+Gypsy_frequencies_popV <- calculate_te_frequency(Indv_matrix_V_Gypsy)
+
+# Enregistrer les résultats dans un fichier
+write.table(Gypsy_frequencies_popV, file = "~/M2/Cafeier/Codes/Matrice_indv/Gypsy_frequency_by_position_popV.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statsV_Gypsy <- analyze_Gypsy_frequencies(Gypsy_frequencies_popV)
+
+
+
+
+### Pour Copia ###
+Indv_matrix_V_Copia <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_V_Copia.txt", header=TRUE, sep="\t")
+
+# Calculer les fréquences
+Copia_frequencies_popV <- calculate_te_frequency(Indv_matrix_V_Copia)
+
+# Enregistrer les résultats dans un fichier
+write.table(Copia_frequencies_popV, file = "~/M2/Cafeier/Codes/Matrice_indv/Copia_frequency_by_position_popV.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+
+# Analyser les résultats
+statsV_Copia <- analyze_Copia_frequencies(Copia_frequencies_popV)
+```
+
+## Tableau recap data abondances TEs
+
+#### Par individu
+
+```{r}
+# Chargement du fichier
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+# enlever les individus sans autorisation d'utilisation... :3
+library(dplyr)
+data <- data %>% select(-all_of(c(
+  "X20135.NoIndex.L003.MERGED", "X20159.NoIndex.L005.MERGED", "X20511_NoIndex_L001.MERGED", 
+  "X20650.NoIndex.L007.MERGED", "X20658.NoIndex.L002.MERGED", "X20708.NoIndex.L008.MERGED", 
+  "X20723.NoIndex.L007.MERGED", "X20731.NoIndex.L002.MERGED", "C.147", "C018.MERGED", 
+  "J.18", "J.2", "J.22", "J.9", "M1", "M2", "M3", "M4", 
+  "N.11", "N.37", "N.38", "N.39", "N.42", "N.5"
+)))
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer une liste de populations basée sur Group_analysis
+populations <- split(correspondance$formatted_id, correspondance$Group_analysis)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+# Conversion des colonnes d'individus en numérique
+for (i in 4:99) {
+  data[, i] <- as.numeric(as.character(data[, i]))
+}
+
+# Chargement des bibliothèques nécessaires
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Création d'un dataframe pour stocker les résultats
+recap_data_TEs <- data.frame()
+
+# Pour chaque individu, calculer pour chaque famille
+for (i in 4:99) {
+  indiv_name <- colnames(data)[i]
+  
+  # Obtenir toutes les familles uniques pour RLG (Gypsy) et RLC (Copia)
+  gypsy_families <- unique(data$Family[data$Superfamily == "RLG"])
+  copia_families <- unique(data$Family[data$Superfamily == "RLC"])
+  
+  # Déterminer la population de l'individu
+  pop <- "Unknown"
+  if (indiv_name %in% pop_A) pop <- "A"
+  else if (indiv_name %in% pop_G) pop <- "G"
+  else if (indiv_name %in% pop_C) pop <- "C"
+  else if (indiv_name %in% pop_D) pop <- "D"
+  else if (indiv_name %in% pop_hb) pop <- "hb"
+  else if (indiv_name %in% pop_B) pop <- "B"
+  else if (indiv_name %in% pop_O) pop <- "O"
+  else if (indiv_name %in% pop_E) pop <- "E"
+  else if (indiv_name %in% pop_R) pop <- "R"
+  else if (indiv_name %in% pop_V) pop <- "V"
+  
+  # Fonction pour traiter chaque famille
+  process_family <- function(family, superfamily) {
+    total_family <- sum(data$Superfamily == superfamily & data$Family == family)
+    sum_family <- sum(data[data$Superfamily == superfamily & data$Family == family, i])
+    count_hetero_family <- sum(data[data$Superfamily == superfamily & data$Family == family, i] == 1)
+    count_homo_family <- sum(data[data$Superfamily == superfamily & data$Family == family, i] == 2)
+    count_abs_family <- sum(data[data$Superfamily == superfamily & data$Family == family, i] == 0)
+    TEs_load <- count_hetero_family + (2 * count_homo_family)
+    ratio_family <- count_hetero_family / count_homo_hetero
+
+    recap_data_TEs <<- rbind(recap_data_TEs, data.frame(
+      Individual = indiv_name, 
+      Population = pop,
+      Superfamily = ifelse(superfamily == "RLG", "Gypsy", "Copia"),
+      Family = family,
+      Count = TEs_load,
+      Count_hetero = count_hetero_family,
+      Count_homo = count_homo_family,
+      Ratio = ratio_family,
+      Total = total_family,
+      Proportion = sum_family / (2*total_family),
+      Proportion_hetero = count_hetero_family / total_family,
+      Proportion_homo = count_homo_family / total_family
+    ))
+  }
+
+  # Appliquer la fonction à chaque famille Gypsy et Copia
+  sapply(gypsy_families, process_family, superfamily = "RLG")
+  sapply(copia_families, process_family, superfamily = "RLC")
+}
+
+# Grouper les populations selon les catégories
+recap_data_TEs <- recap_data_TEs %>%
+  mutate(Population_Group = case_when(
+    Population %in% c("A", "G") ~ "AG",
+    Population == "C" ~ "C",
+    Population == "D" ~ "D",
+    Population == "hb" ~ "hb",
+    Population %in% c("B", "O") ~ "OB",
+    Population %in% c("E", "R") ~ "ER",
+    Population == "V" ~ "V",
+    TRUE ~ "Unknown"
+  ))
+
+# Réorganiser les niveaux de la variable Population_Group
+recap_data_TEs$Population_Group <- factor(recap_data_TEs$Population_Group, 
+                                           levels = c("AG", "C", "D", "hb", "OB", "ER", "V", "Unknown"))
+
+print(recap_data_TEs)
+
+# Enregistrer le fichier final
+write.table(recap_data_TEs, "~/M2/Cafeier/Codes/Matrice_indv/recap_data_TEs.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+```
+
+```{######### !!!! ancien code avec 2 boucles de suite !!!! ###########}
+
+# Chargement du fichier
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer une liste de populations basée sur Group_analysis
+populations <- split(correspondance$formatted_id, correspondance$Group_analysis)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+# Conversion des colonnes d'individus en numérique
+for (i in 4:123) {
+  data[, i] <- as.numeric(as.character(data[, i]))
+}
+
+# Chargement des bibliothèques nécessaires
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Création d'un dataframe pour stocker les résultats
+recap_data_TEs <- data.frame()
+
+
+# Pour chaque individu, calculer le ratio entre hétérozygotes et homozygotes pour chaque famille
+for (i in 4:123) {
+  indiv_name <- colnames(data)[i]
+  
+  # Obtenir toutes les familles uniques pour RLG (Gypsy) et RLC (Copia)
+  gypsy_families <- unique(data$Family[data$Superfamily == "RLG"])
+  copia_families <- unique(data$Family[data$Superfamily == "RLC"])
+  
+  # Déterminer la population de l'individu
+  pop <- "Unknown"
+  if (indiv_name %in% pop_A) pop <- "A"
+  else if (indiv_name %in% pop_G) pop <- "G"
+  else if (indiv_name %in% pop_C) pop <- "C"
+  else if (indiv_name %in% pop_D) pop <- "D"
+  else if (indiv_name %in% pop_hb) pop <- "hb"
+  else if (indiv_name %in% pop_B) pop <- "B"
+  else if (indiv_name %in% pop_O) pop <- "O"
+  else if (indiv_name %in% pop_E) pop <- "E"
+  else if (indiv_name %in% pop_R) pop <- "R"
+  else if (indiv_name %in% pop_V) pop <- "V"
+  
+  # Pour chaque famille Gypsy, calculer le nombre de 1 et de 2, puis le ratio
+  for (family in gypsy_families) {
+    sum_family <- sum(data[data$Superfamily == "RLG" & data$Family == family, i])
+    count_hetero_family <- sum(data[data$Superfamily == "RLG" & data$Family == family, i] == 1)
+    count_homo_family <- sum(data[data$Superfamily == "RLG" & data$Family == family, i] == 2)
+    count_homo_hetero <- count_hetero_family + count_homo_family
+    ratio_family <- count_hetero_family / count_homo_hetero
+    
+    recap_data_TEs <- rbind(recap_data_TEs, data.frame(
+      Individual = indiv_name, 
+      Population = pop,
+      Superfamily = "Gypsy",
+      Family = family,
+      Count = sum_family,
+      Count_hetero = count_hetero_family,
+      Count_homo = count_homo_family,
+      Ratio = ratio_family
+    ))
+  }
+
+  # Pour chaque famille Copia, calculer le nombre de 1 et de 2, puis le ratio
+  for (family in copia_families) {
+    sum_family <- sum(data[data$Superfamily == "RLC" & data$Family == family, i])
+    count_hetero_family <- sum(data[data$Superfamily == "RLC" & data$Family == family, i] == 1)
+    count_homo_family <- sum(data[data$Superfamily == "RLC" & data$Family == family, i] == 2)
+    count_homo_hetero <- count_hetero_family + count_homo_family
+    ratio_family <- count_hetero_family / count_homo_hetero
+    
+    recap_data_TEs <- rbind(recap_data_TEs, data.frame(
+      Individual = indiv_name, 
+      Population = pop,
+      Superfamily = "Copia",
+      Family = family,
+      Count = sum_family,
+      Count_hetero = count_hetero_family,
+      Count_homo = count_homo_family,
+      Ratio = ratio_family
+    ))
+  }
+}
+
+# Calculer le total pour chaque famille (nombre de lignes * 2)
+family_totals <- data %>%
+  group_by(Superfamily, Family) %>%
+  summarise(Total = n() * 2) %>%
+  ungroup()
+
+print(family_totals)
+
+# Modify family_totals to replace RLC with Copia and RLG with Gypsy
+family_totals <- family_totals %>%
+  mutate(Superfamily = case_when(
+    Superfamily == "RLC" ~ "Copia",
+    Superfamily == "RLG" ~ "Gypsy",
+    TRUE ~ Superfamily
+  ))
+
+# Now try the join again
+recap_data_TEs <- recap_data_TEs %>%
+  left_join(family_totals, by = c("Superfamily", "Family")) %>%
+  mutate(
+    Proportion = Count / Total,
+    Proportion_hetero = Count_hetero / Total,
+    Proportion_homo = Count_homo / Total
+  )
+# Grouper les populations selon les catégories
+recap_data_TEs <- recap_data_TEs %>%
+  mutate(Population_Group = case_when(
+    Population %in% c("A", "G") ~ "AG",
+    Population == "C" ~ "C",
+    Population == "D" ~ "D",
+    Population == "hb" ~ "hb",
+    Population %in% c("B", "O") ~ "OB",
+    Population %in% c("E", "R") ~ "ER",
+    Population == "V" ~ "V",
+    TRUE ~ "Unknown"
+  ))
+
+# Réorganiser les niveaux de la variable Population_Group
+recap_data_TEs$Population_Group <- factor(recap_data_TEs$Population_Group, 
+                                           levels = c("AG", "C", "D", "hb", "OB", "ER", "V", "Unknown"))
+
+print(recap_data_TEs)
+
+
+# enregistrer le doc
+write.table(recap_data_TEs, "~/M2/Cafeier/Codes/Matrice_indv/recap_data_TEs.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+```
+
+##### Par individu par chromosome
+
+```{r}
+# Ajout de l'analyse par chromosome
+
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+# Liste des chromosomes uniques
+chromosomes <- unique(data$CHROM)
+
+# Création d'un dataframe pour stocker les résultats par chromosome
+recap_data_TEs_chrom <- data.frame()
+
+# Pour chaque individu, analyser par chromosome
+for (i in 4:123) {
+  indiv_name <- colnames(data)[i]
+  
+  # Déterminer la population de l'individu
+  pop <- ifelse(indiv_name %in% pop_A, "A",
+         ifelse(indiv_name %in% pop_G, "G",
+         ifelse(indiv_name %in% pop_C, "C",
+         ifelse(indiv_name %in% pop_D, "D",
+         ifelse(indiv_name %in% pop_hb, "hb",
+         ifelse(indiv_name %in% pop_B, "B",
+         ifelse(indiv_name %in% pop_O, "O",
+         ifelse(indiv_name %in% pop_E, "E",
+         ifelse(indiv_name %in% pop_R, "R",
+         ifelse(indiv_name %in% pop_V, "V", "Unknown"))))))))))
+  
+  # Parcourir chaque chromosome
+  for (chrom in chromosomes) {
+    
+    # Filtrer les données par chromosome
+    data_chrom <- data[data$CHROM == chrom, ]
+    
+    # Obtenir toutes les familles uniques pour RLG (Gypsy) et RLC (Copia)
+    gypsy_families <- unique(data_chrom$Family[data_chrom$Superfamily == "RLG"])
+    copia_families <- unique(data_chrom$Family[data_chrom$Superfamily == "RLC"])
+    
+    # Analyser par famille et superfamille
+    for (family in gypsy_families) {
+      sum_family <- sum(data_chrom[data_chrom$Superfamily == "RLG" & data_chrom$Family == family, i], na.rm = TRUE)
+      count_hetero_family <- sum(data_chrom[data_chrom$Superfamily == "RLG" & data_chrom$Family == family, i] == 1, na.rm = TRUE)
+      count_homo_family <- sum(data_chrom[data_chrom$Superfamily == "RLG" & data_chrom$Family == family, i] == 2, na.rm = TRUE)
+      ratio_family <- ifelse(count_homo_family == 0, NA, count_hetero_family / (count_hetero_family + count_homo_family))
+      
+      recap_data_TEs_chrom <- rbind(recap_data_TEs_chrom, data.frame(
+        Individual = indiv_name, 
+        Population = pop,
+        Chromosome = chrom,
+        Superfamily = "Gypsy",
+        Family = family,
+        Count = sum_family,
+        Count_hetero = count_hetero_family,
+        Count_homo = count_homo_family,
+        Ratio = ratio_family
+      ))
+    }
+    
+    for (family in copia_families) {
+      sum_family <- sum(data_chrom[data_chrom$Superfamily == "RLC" & data_chrom$Family == family, i], na.rm = TRUE)
+      count_hetero_family <- sum(data_chrom[data_chrom$Superfamily == "RLC" & data_chrom$Family == family, i] == 1, na.rm = TRUE)
+      count_homo_family <- sum(data_chrom[data_chrom$Superfamily == "RLC" & data_chrom$Family == family, i] == 2, na.rm = TRUE)
+      ratio_family <- ifelse(count_homo_family == 0, NA, count_hetero_family / (count_hetero_family + count_homo_family))
+      
+      recap_data_TEs_chrom <- rbind(recap_data_TEs_chrom, data.frame(
+        Individual = indiv_name, 
+        Population = pop,
+        Chromosome = chrom,
+        Superfamily = "Copia",
+        Family = family,
+        Count = sum_family,
+        Count_hetero = count_hetero_family,
+        Count_homo = count_homo_family,
+        Ratio = ratio_family
+      ))
+    }
+  }
+}
+
+# Calculer les totaux par individu et chromosome de manière différente
+totals_by_indiv_chrom <- data %>%
+  pivot_longer(cols = 4:123, names_to = "Individual", values_to = "Value") %>%
+  group_by(CHROM, Individual) %>%
+  summarise(Total = n(), .groups = "drop")
+print(totals_by_indiv_chrom)
+
+# Joindre les totaux et calculer les proportions
+recap_data_TEs_chrom <- recap_data_TEs_chrom %>%
+  left_join(totals_by_indiv_chrom, by = c("Individual" = "Individual", "Chromosome" = "CHROM")) %>%
+  mutate(Proportion = Count / Total) %>%
+  mutate(Proportion_hetero = Count_hetero / Total) %>%
+  mutate(Proportion_homo = Count_homo / Total)
+
+head(recap_data_TEs_chrom)
+# Enregistrement des résultats
+write.table(recap_data_TEs_chrom, "~/M2/Cafeier/Codes/Matrice_indv/recap_data_TEs_chrom.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+```
+
+#### Par population
+
+```{r}
+# petit summary du tableau par individus
+recap_data_TEs_byPops <- recap_data_TEs %>%
+  group_by(Population_Group, Superfamily, Family) %>%
+  summarize(
+    Mean_Count = mean(Count, na.rm = TRUE),
+    Median_Count = median(Count, na.rm = TRUE),
+    SD_Count = sd(Count, na.rm = TRUE),
+    Quantil75_Count = quantile(Count,probs=0.75, na.rm = TRUE),
+    Quantil25_Count = quantile(Count,probs=0.25, na.rm = TRUE),
+    Mean_Proportion = mean(Proportion, na.rm = TRUE),
+    Median_Proportion = median(Proportion, na.rm = TRUE),
+    SD_Proportion = sd(Proportion, na.rm = TRUE),
+    Quantil75_Proportion = quantile(Proportion,probs=0.75, na.rm = TRUE),
+    Quantil25_Proportion = quantile(Proportion,probs=0.25, na.rm = TRUE),
+    Mean_Hetero = mean(Count_hetero, na.rm = TRUE),
+    Median_Hetero = median(Count_hetero, na.rm = TRUE),
+    Quantil75_Hetero = quantile(Count_hetero,probs=0.75, na.rm = TRUE),
+    Quantil25_Hetero = quantile(Count_hetero,probs=0.25, na.rm = TRUE),
+    Mean_Proportion_hetero = mean(Proportion_hetero, na.rm = TRUE),
+    Median_Proportion_hetero = median(Proportion_hetero, na.rm = TRUE),
+    SD_Proportion_hetero = sd(Proportion_hetero, na.rm = TRUE),
+    Quantil75_Proportion_hetero = quantile(Proportion_hetero,probs=0.75, na.rm = TRUE),
+    Quantil25_Proportion_hetero = quantile(Proportion_hetero,probs=0.25, na.rm = TRUE),
+    Mean_Homo = mean(Count_homo, na.rm = TRUE),
+    Median_Homo = median(Count_homo, na.rm = TRUE),
+    Quantil75_Homo = quantile(Count_homo,probs=0.75, na.rm = TRUE),
+    Quantil25_Homo = quantile(Count_homo,probs=0.25, na.rm = TRUE),
+    Mean_Proportion_homo = mean(Proportion_homo, na.rm = TRUE),
+    Median_Proportion_homo = median(Proportion_homo, na.rm = TRUE),
+    SD_Proportion_homo = sd(Proportion_homo, na.rm = TRUE),
+    Quantil75_Proportion_homo = quantile(Proportion_homo,probs=0.75, na.rm = TRUE),
+    Quantil25_Proportion_homo = quantile(Proportion_homo,probs=0.25, na.rm = TRUE),
+    Mean_Ratio = mean(Ratio, na.rm = TRUE),
+    Median_Ratio = median(Ratio, na.rm = TRUE),
+    Quantil75_Ratio = quantile(Ratio,probs=0.75, na.rm = TRUE),
+    Quantil25_Ratio = quantile(Ratio,probs=0.25, na.rm = TRUE),
+    SD_Ratio = sd(Ratio, na.rm = TRUE),
+    Count_NA = sum(is.na(Ratio)),
+    Total_Count = n(),
+    .groups = "drop"
+  ) %>%
+  # Ajouter le pourcentage de valeurs non-NA
+  mutate(Percent_Valid = 100 * (Total_Count - Count_NA) / Total_Count) %>%
+  arrange(Population_Group, Superfamily, desc(Mean_Ratio))
+
+print(recap_data_TEs_byPops)
+# enregistrer le doc
+write.table(recap_data_TEs_byPops, "~/M2/Cafeier/Codes/Matrice_indv/recap_data_TEs_byPops.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+```
+
+##### Par population par chromosome
+
+```{r}
+recap_data_TEs_chrom_byPops <- recap_data_TEs_chrom %>%
+  group_by(Chromosome, Population, Superfamily, Family) %>%
+  summarize(
+    Mean_Count = mean(Count, na.rm = TRUE),
+    Median_Count = median(Count, na.rm = TRUE),
+    SD_Count = sd(Count, na.rm = TRUE),
+    Quantil75_Count = quantile(Count,probs=0.75, na.rm = TRUE),
+    Quantil25_Count = quantile(Count,probs=0.25, na.rm = TRUE),
+    Mean_Proportion = mean(Proportion, na.rm = TRUE),
+    Median_Proportion = median(Proportion, na.rm = TRUE),
+    SD_Proportion = sd(Proportion, na.rm = TRUE),
+    Quantil75_Proportion = quantile(Proportion,probs=0.75, na.rm = TRUE),
+    Quantil25_Proportion = quantile(Proportion,probs=0.25, na.rm = TRUE),
+    Mean_Hetero = mean(Count_hetero, na.rm = TRUE),
+    Median_Hetero = median(Count_hetero, na.rm = TRUE),
+    Quantil75_Hetero = quantile(Count_hetero,probs=0.75, na.rm = TRUE),
+    Quantil25_Hetero = quantile(Count_hetero,probs=0.25, na.rm = TRUE),
+    Mean_Proportion_hetero = mean(Proportion_hetero, na.rm = TRUE),
+    Median_Proportion_hetero = median(Proportion_hetero, na.rm = TRUE),
+    SD_Proportion_hetero = sd(Proportion_hetero, na.rm = TRUE),
+    Quantil75_Proportion_hetero = quantile(Proportion_hetero,probs=0.75, na.rm = TRUE),
+    Quantil25_Proportion_hetero = quantile(Proportion_hetero,probs=0.25, na.rm = TRUE),
+    Mean_Homo = mean(Count_homo, na.rm = TRUE),
+    Median_Homo = median(Count_homo, na.rm = TRUE),
+    Quantil75_Homo = quantile(Count_homo,probs=0.75, na.rm = TRUE),
+    Quantil25_Homo = quantile(Count_homo,probs=0.25, na.rm = TRUE),
+    Mean_Proportion_homo = mean(Proportion_homo, na.rm = TRUE),
+    Median_Proportion_homo = median(Proportion_homo, na.rm = TRUE),
+    SD_Proportion_homo = sd(Proportion_homo, na.rm = TRUE),
+    Quantil75_Proportion_homo = quantile(Proportion_homo,probs=0.75, na.rm = TRUE),
+    Quantil25_Proportion_homo = quantile(Proportion_homo,probs=0.25, na.rm = TRUE),
+    Mean_Ratio = mean(Ratio, na.rm = TRUE),
+    Median_Ratio = median(Ratio, na.rm = TRUE),
+    Quantil75_Ratio = quantile(Ratio,probs=0.75, na.rm = TRUE),
+    Quantil25_Ratio = quantile(Ratio,probs=0.25, na.rm = TRUE),
+    SD_Ratio = sd(Ratio, na.rm = TRUE),
+    Count_NA = sum(is.na(Ratio)),
+    Total_Count = n(),
+    .groups = "drop"
+  ) %>%
+
+print(recap_data_TEs_chrom_byPops)
+# enregistrer le doc
+write.table(recap_data_TEs_chrom_byPops, "~/M2/Cafeier/Codes/Matrice_indv/recap_data_TEs_chrom_byPops.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+```
+
+### Analyse Factorielle des Correspondances Mixtes (FAMD)
+
+Permet d'inclure à la fois des variables quantitatives (**Count**, **Count_hetero, Count_homo, Ratio**) et des variables qualitatives (**Family, Population_Group, Individual, Superfamily, Population**)
+
+!! voir aussi le package \|\>explor::explor()
+
+```{r}
+# Installer et charger les bibliothèques nécessaires
+#install.packages("FactoMineR")
+#install.packages("factoextra")
+library(FactoMineR)
+library(factoextra)
+
+# Vérifier les types de variables
+str(recap_data_TEs)
+
+# Vérifier les valeurs manquantes (NA)
+colSums(is.na(recap_data_TEs))
+# Vérifier les valeurs infinies
+sum(!is.finite(recap_data_TEs$Count))
+sum(!is.finite(recap_data_TEs$Count_hetero))
+sum(!is.finite(recap_data_TEs$Count_homo))
+sum(!is.finite(recap_data_TEs$Ratio))
+
+# Convertir les variables qualitatives en facteur
+recap_data_TEs$Family <- as.factor(recap_data_TEs$Family)
+recap_data_TEs$Population_Group <- as.factor(recap_data_TEs$Population_Group)
+recap_data_TEs$Individual <- as.factor(recap_data_TEs$Individual)
+recap_data_TEs$Population <- as.factor(recap_data_TEs$Population)
+recap_data_TEs$Superfamily <- as.factor(recap_data_TEs$Superfamily)
+
+# Lancer la FAMD
+FAMD_indv <- FAMD(recap_data_TEs[, c("Family", "Population_Group", "Individual", "Population", "Superfamily", "Count", "Count_hetero", "Count_homo")], graph = FALSE)
+# je n'ai pas pris ratio , "Ratio" il y a des NA lorsqu'un indv n'a pas de TE sous forme homozygote pour une famille TEs
+
+# Visualisation des individus
+fviz_famd_ind(FAMD_indv, repel = TRUE, habillage = "Family") # Colorer par Familles TEs
+
+fviz_famd_ind(FAMD_indv, repel = TRUE, habillage = "Superfamily") # Colorer par Superfamilles TEs : Gypsy/Copia
+
+# Visualisation des variables
+fviz_famd_var(FAMD_indv, repel = TRUE)
+
+# Visualisation des contributions des variables
+fviz_contrib(FAMD_indv, choice = "var", axes = 1)  # Axe 1
+fviz_contrib(FAMD_indv, choice = "var", axes = 2)  # Axe 2
+
+```
+
+#### Par pops
+
+```{r}
+#install.packages("FactoMineR")
+#install.packages("factoextra")
+library(FactoMineR)
+library(factoextra)
+
+# convertir les données (just in case ;)))
+recap_data_TEs_byPops$Population_Group <- as.factor(recap_data_TEs_byPops$Population_Group)
+recap_data_TEs_byPops$Superfamily <- as.factor(recap_data_TEs_byPops$Superfamily)
+recap_data_TEs_byPops$Family <- as.factor(recap_data_TEs_byPops$Family)
+
+FAMD_pops <- FAMD(recap_data_TEs_byPops[, c("Population_Group", "Superfamily", "Family", 
+  "Mean_Count", "Median_Count", "Quantil75_Count", "Quantil25_Count", "SD_Count",
+  "Mean_Proportion", "Median_Proportion", "Quantil75_Proportion", "Quantil25_Proportion", "SD_Proportion",
+  "Mean_Hetero", "Median_Hetero", "Quantil75_Hetero", "Quantil25_Hetero", 
+  "Mean_Proportion_hetero", "Median_Proportion_hetero", "Quantil75_Proportion_hetero", "Quantil25_Proportion_hetero", "SD_Proportion_hetero",
+  "Mean_Homo", "Median_Homo", "Quantil75_Homo", "Quantil25_Homo", 
+  "Mean_Proportion_homo", "Median_Proportion_homo", "Quantil75_Proportion_homo", "Quantil25_Proportion_homo", "SD_Proportion_homo",
+  "Mean_Ratio", "Median_Ratio", "Quantil75_Ratio", "Quantil25_Ratio"
+                                           )], graph = FALSE)
+    # On exclut Count_NA, Total_Count, "SD_Ratio", et Percent_Valid car ils ne sont pas utiles pour une FAMD
+# Graphique des individus (avec coloration par pops) :
+fviz_famd_ind(FAMD_pops, repel = TRUE, habillage = "Population_Group", addEllipses = TRUE, label = "none") +
+  theme_minimal()
+# Graphique des individus (avec coloration par Superfamily) :
+fviz_famd_ind(FAMD_pops, repel = TRUE, habillage = "Superfamily", addEllipses = TRUE, label = "none") +
+  theme_minimal()
+# Graphique des individus (avec coloration par Family) :
+fviz_famd_ind(FAMD_pops, repel = TRUE, habillage = "Family", addEllipses = TRUE) +
+  theme_minimal()
+
+fviz_ellipses(FAMD_pops, c("Population_Group", "Family"), repel = TRUE)
+
+# des formes différentes pour les Superfamilies et des couleurs pour les Families :
+ind <- get_famd_ind(FAMD_pops)  # Extraire les coordonnées des individus
+ind_data <- data.frame(ind$coord)  # Convertir en data.frame
+ind_data$Family <- recap_data_TEs_byPops$Family  # Ajouter la variable Family
+ind_data$Superfamily <- recap_data_TEs_byPops$Superfamily  # Ajouter Superfamily
+
+library(ggplot2)
+
+ggplot(ind_data, aes(x = Dim.1, y = Dim.2, color = Family, shape = Superfamily)) +
+  geom_point(size = 3) + 
+  theme_minimal() +
+  labs(title = "FAMD des transposons",
+       x = "Dimension 1",
+       y = "Dimension 2") +
+  theme(legend.position = "right")
+
+# Graphique des variables (montrant les contributions des variables) :
+fviz_famd_var(FAMD_pops, repel = TRUE)
+# Valeurs propres (importance des dimensions) :
+fviz_screeplot(FAMD_pops, addlabels = TRUE)
+# Contribution des variables aux axes principaux :
+fviz_contrib(FAMD_pops, "var", axes = 1)  # Contribution des variables à l'axe 1
+fviz_contrib(FAMD_pops, "var", axes = 2)  # Contribution des variables à l'axe 2
+```
+
+#### Par pop par chromosome
+
+```{r}
+#install.packages("FactoMineR")
+#install.packages("factoextra")
+library(FactoMineR)
+library(factoextra)
+
+# convertir les données (just in case ;)))
+recap_data_TEs_chrom_byPops$Chromosome <- as.factor(recap_data_TEs_chrom_byPops$Chromosome)
+recap_data_TEs_chrom_byPops$Population <- as.factor(recap_data_TEs_chrom_byPops$Population)
+recap_data_TEs_chrom_byPops$Superfamily <- as.factor(recap_data_TEs_chrom_byPops$Superfamily)
+recap_data_TEs_chrom_byPops$Family <- as.factor(recap_data_TEs_chrom_byPops$Family)
+
+FAMD_pops_chrom <- FAMD(recap_data_TEs_chrom_byPops[, c("Chromosome", "Population", "Superfamily", "Family", 
+  "Mean_Count", "Median_Count", "Quantil75_Count", "Quantil25_Count", "SD_Count",
+  "Mean_Proportion", "Median_Proportion", "Quantil75_Proportion", "Quantil25_Proportion", "SD_Proportion",
+  "Mean_Hetero", "Median_Hetero", "Quantil75_Hetero", "Quantil25_Hetero", 
+  "Mean_Proportion_hetero", "Median_Proportion_hetero", "Quantil75_Proportion_hetero", "Quantil25_Proportion_hetero", "SD_Proportion_hetero",
+  "Mean_Homo", "Median_Homo", "Quantil75_Homo", "Quantil25_Homo", 
+  "Mean_Proportion_homo", "Median_Proportion_homo", "Quantil75_Proportion_homo", "Quantil25_Proportion_homo", "SD_Proportion_homo",
+  "Mean_Ratio", "Median_Ratio", "Quantil75_Ratio", "Quantil25_Ratio"
+                                           )], graph = FALSE)
+    # On exclut Count_NA, Total_Count, "SD_Ratio", et Percent_Valid car ils ne sont pas utiles pour une FAMD
+# Graphique des individus (avec coloration par pops) :
+fviz_famd_ind(FAMD_pops_chrom, repel = TRUE, habillage = "Chromosome", addEllipses = TRUE, label = "none") +
+  theme_minimal()
+# Graphique des individus (avec coloration par pops) :
+fviz_famd_ind(FAMD_pops_chrom, repel = TRUE, habillage = "Population", addEllipses = TRUE, label = "none") +
+  theme_minimal()
+# Graphique des individus (avec coloration par Superfamily) :
+fviz_famd_ind(FAMD_pops_chrom, repel = TRUE, habillage = "Superfamily", addEllipses = TRUE, label = "none") +
+  theme_minimal()
+# Graphique des individus (avec coloration par Family) :
+fviz_famd_ind(FAMD_pops_chrom, repel = TRUE, habillage = "Family", addEllipses = TRUE) +
+  theme_minimal()
+
+# des formes différentes pour les Superfamilies et des couleurs pour les Families :
+ind <- get_famd_ind(FAMD_pops_chrom)  # Extraire les coordonnées des individus
+ind_data <- data.frame(ind$coord)  # Convertir en data.frame
+ind_data$Family <- recap_data_TEs_chrom_byPops$Family  # Ajouter la variable Family
+ind_data$Superfamily <- recap_data_TEs_chrom_byPops$Superfamily  # Ajouter Superfamily
+
+library(ggplot2)
+
+ggplot(ind_data, aes(x = Dim.1, y = Dim.2, color = Family, shape = Superfamily)) +
+  geom_point(size = 3) + 
+  theme_minimal() +
+  labs(title = "FAMD des transposons",
+       x = "Dimension 1",
+       y = "Dimension 2") +
+  theme(legend.position = "right")
+
+# Graphique des variables (montrant les contributions des variables) :
+fviz_famd_var(FAMD_pops_chrom, repel = TRUE)
+# Valeurs propres (importance des dimensions) :
+fviz_screeplot(FAMD_pops_chrom, addlabels = TRUE)
+# Contribution des variables aux axes principaux :
+fviz_contrib(FAMD_pops_chrom, "var", axes = 1)  # Contribution des variables à l'axe 1
+fviz_contrib(FAMD_pops_chrom, "var", axes = 2)  # Contribution des variables à l'axe 2
+
+```
+
+! Chaque numéro est une ligne du tableau = une superfamille TE dans une population de Coffea donnée !
+
+**Les modalités des variables qualitatives (triangles noirs)**, montrent comment les catégories des variables qualitatives (leur position moyenne) sont positionnées dans l'espace factoriel. pour les enlever rajouter ", invisible = "quali"".
+
+**Pops**
+
+Les pops AG, C et D semblent regroupées ensembles en corrélation avec l'axe Dim1. Ce sont aussi les populations où nous observons plus d'homozygotes et d'hétérozygotes avec les ration hetero/homo les plus faibles, i.e. la charge en TEs la plus elevée. + lien superfamilles et familles TEs.
+
+Identiquement, les populations OB, ER et V ainsi que les hybrides sont plus centrées et en corrélation avec l'axe Dim2, majoritairement représenté par les variables en lien avec le ratio hetero/homo, i.e. une charge en TEs plus faible. + lien avec la population de Caféiers.
+
+**(Super)Familles TEs**
+
+Les Gypsy sont plus sensibles à l'axe Dim1 et globalement beaucoup plus nombreux que les Copias (compte total, hétérozygotes ou homozygotes avec globalement des ratios hétéro/homo plus élevés (plus hétéro que homo, i.e. moins présent sous une forme potentiellement délétère : homozygote recessive potentiellement délétère). Mais les Gypsy présentent également plus de différences entre familles TEs : Tekay étant les plus nombreux (moins sous sel ??).
+
+A côté les Copias sont plutôt corrélés avec les variables concernant les ratios hetero/homo ainsi que les populations de Coffea.
+
+## ACP
+
+```{r}
+X <- Indv_matrix_012_filtered_annot
+X <- subset(X, Superfamily=="RLG")
+X <- X[,4:which(colnames(X)=="ZO16")]
+X <- as.matrix(X)
+OK <- apply(X, 1, var)>0
+PCA <- prcomp(t(X[OK==TRUE,]), center = TRUE, scale. = TRUE)
+varexp <- PCA$sdev
+varexp <- varexp/sum(varexp)
+df <- as.data.frame(PCA$x[,1:2])
+df$ind <- rownames(df)
+df2 <- left_join(df, correspondance, by = c("ind"="Bam"))
+df3 <- subset(df2, Group_analysis %in% c("A","G", "B", "C", "D" ,"E", "O", "R"))
+ggplot(df3)+ geom_point(aes(PC1, PC2, color=Group_analysis), size=5)
+
+```
+
+## RDA Analyse de redondance
+
+méthode d'**analyse multivariée** qui combine la **régression multiple** et l'**Analyse en Composantes Principales (ACP)**.
+
+Identifier quelles variables environnementales influencent la diversité génétique.
+
+Réduire la dimension des données tout en gardant l'information pertinente.
+
+Détecter la sélection locale en génétique des populations.
+
+#### Données environnementales
+
+```{r}
+library(readxl)
+env <- read_excel("~/M2/Cafeier/data_coffea/passeport-climatic_variables_af_viet.xlsx", 
+    sheet = "Afr-climatic_variables_wc2.1")
+
+library(dplyr)
+# Modifier le dataframe 'env'
+env <- env %>%
+  rename(Individual = Label) %>%  # Renommer 'Label' en 'Individual'
+  mutate(Population = case_when(
+    snp_group %in% c("A", "G") ~ "AG",
+    snp_group == "C" ~ "C",
+    snp_group == "D" ~ "D",
+    snp_group %in% c("O", "B") ~ "OB",
+    snp_group == "hb" ~ "hb",
+    snp_group == "E" ~ "E"
+  ))
+env <- env %>%
+  select(Individual, Population, Long, Lat, everything())  # Réorganiser les colonnes
+
+# Vérifier les changements
+head(env)
+```
+
+```{r}
+# On ajuste un modèle multivarié où l'on cherche à expliquer la variation génétique en fonction des variables environnementales
+coffea.rda <- rda(gen ~ ., data=env_data, scale=TRUE)
+# gen est la matrice des SNPs et env_data contient les variables environnementales !!! scale pour centrer reduire !!!
+
+
+# Vérification de la qualité du modèle : cbien de variance est expliquee par le modele
+summary(argan.rda) # Donne le pourcentage de variance expliquée par chaque axe
+screeplot(argan.rda)  # Permet de voir si les axes contraints expliquent bien la variance.
+#    Si la variance expliquée est faible, il se peut que les variables environnementales sélectionnées ne soient pas pertinentes.
+
+# Vérification de la colinéarité entre variables
+## Si des variables environnementales sont fortement corrélées, cela peut fausser les résultats.
+vif.cca(argan.rda)  # Variance Inflation Factor (VIF) → Détecte la colinéarité : Si VIF > 10, il faut supprimer certaines variables pour éviter les redondances
+
+# Visualisation des résultats :
+plot(argan.rda, scaling=3)  # visualiser la relation entre les populations génétiques et les variables environnementales
+ 
+# Interprétation des Résultats : Les SNPs fortement chargés sur un axe sont considérés comme influencés par les variables environnementales associées
+load.rda <- summary(argan.rda)$species[,1:3]
+hist(load.rda[,1], main="Loadings sur RDA1") # Histogrammes des loadings → Montrent comment les SNPs sont répartis sur chaque axe
+     # ! SNPs avec des valeurs extrêmes peuvent être sous sélection locale
+
+# Détection des SNPs sous sélection : On identifie les SNPs ayant des valeurs anormales (outliers) :
+outliers <- function(x, z){
+  lims <- mean(x) + c(-1, 1) * z * sd(x)
+  x[x < lims[1] | x > lims[2]]
+}
+
+cand1 <- outliers(load.rda[,1], 3)  
+
+# Vérification de la Significativité :  test statistique sur la distance de Mahalanobis pour détecter les SNPs sous sélection :
+rdadapt <- function(rda, K) {
+  loadings <- rda$CCA$v[,1:as.numeric(K)] # rda$CCA$v contient les coefficients de charge ("loadings") des SNPs sur les axes de la RDA, Sélectionne les K premiers axes
+  resscale <- apply(loadings, 2, scale) # centrer reduire,; comparatibilité des variables
+  resmaha <- covRob(resscale, distance = TRUE, na.action= na.omit, estim="pairwiseGK")$dist # covRob() (package robust) calcule la distance de Mahalanobis, qui mesure l'écart multidimensionnel d'un SNP par rapport à la distribution globale,distance = TRUE → On veut récupérer la distance de Mahalanobis pour chaque SNP, na.action = na.omit → Ignore les valeurs manquantes (NA). estim = "pairwiseGK" → Utilise une estimation robuste de la matrice de covariance. 
+  lambda <- median(resmaha)/qchisq(0.5,df=K) # qchisq(0.5, df=K) → Quantile médian de la distribution du Chi-2 à K degrés de liberté. median(resmaha) → Médiane des distances de Mahalanobis calculées. lambda est un facteur de correction pour ajuster l'inflation des distances.
+  reschi2test <- pchisq(resmaha/lambda, K, lower.tail=FALSE) # Ajuste la distance de Mahalanobis et Calcule la p-value, en testant si chaque SNP s'écarte significativement sous une distribution du Chi-2 à K degrés de liberté >>> Une p-value faible signifie que le SNP a une charge (loading) anormalement élevée, donc il pourrait être sous sélection
+  qval <- qvalue(reschi2test) # qvalue(reschi2test) (package qvalue) applique la correction pour tests multiples (contrôle du FDR, False Discovery Rate)
+  return(data.frame(p.values=reschi2test, q.values=qval$qvalues)) # p.values → p-values brutes du test du Chi-2 et q.values → p-values ajustées (FDR).
+}
+
+### Filtrage des SNPs avec p-value < 0.05
+RDA1<-rdadapt(argan.rda, 3) # Will output P-values corrected for inflation and qvalues, using the Mahala distance forthe two first RDA
+
+# Visualisation avec un Manhattan Plot : Un Manhattan plot permet de visualiser les SNPs sous sélection en fonction de leur position chromosomique
+ggplot(RDA1, aes(x = POSITION, y = -log10(P_val), color = CHR)) + # L'axe des y est basé sur le logarithme négatif (base 10) des p-values. Ce transformation permet de rendre les petites p-values plus visibles (plus la p-value est faible, plus le point sera élevé sur l'axe des y)
+  geom_point() +
+  facet_wrap(~CHR) +
+  labs(title = "Manhattan Plot of RDA results",
+       x = "Genomic Position",
+       y = "P-value") +
+  theme_minimal()
+
+```
+
+## Densité en gènes et TEs
+### bcftools closest
+
+voir script en question :3
+
+### bcftools intersect
+
+```{bash}
+# ne garder que les genes :
+#awk '$3 == "gene"' CC1.8_v2_named_annotation_0.5_BTI.gff3 > genes_only.gff3
+
+# ne garder que les genes et les chromosomes (on enleve les contigs)
+awk '$3 == "gene" && $1 ~ /^CC1\.8\.Chr0[1-9]$|^CC1\.8\.Chr1[01]$/' CC1.8_v2_named_annotation_0.5_BTI.gff3 > genes_only.gff3
+
+```
+
+```{bash}
+gunzip -c test_biallelic.vcf.gz > test_biallelic.vcf # décompression de mon fichier ME
+
+module load bedtools/2.30.0
+
+bedtools intersect -a /shared/projects/te_coffea/vcf_for_phasing/test_biallelic.vcf -b /shared/projects/te_coffea/Genome_annotation/genes_only.gff3 -wa -wb > /shared/projects/te_coffea/Tests_TEs/Genes_TEs/genes_with_te.txt
+```
+
+on obtient :
+
+\$ head genes_with_te.txt
+
+CC1.8.Chr03 7909366 test_ins_2 TGTTAAA <INS:ME> . PASS SVTYPE=DNA;MEI=TE_00002498;MEPRED=PASS;0START=7909366;0END=7909372;SVLEN=596;MESTRAND=-;AC=2 GT 0/. 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/. 0/0 0/0 0/0 0/0 1/1 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 CC1.8.Chr03 maker gene 7889553 7914360 . - . ID=Ccan003g013190;Name=Ccan003g013190;
+
+CC1.8.Chr03 38917003 test_ins_4 CATATAAATCG <INS:ME> . LC SVTYPE=DNA;MEI=TE_00002498;MEPRED=PASS;0START=38917003;0END=38917013;SVLEN=586;MESTRAND=+;AC=8 GT 0/. 0/. 0/0 0/0 0/1 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/1 0/0 0/0 0/0 0/. 0/0 0/1 0/. 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/. 0/0 0/0 0/0 0/0 0/1 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/. 0/0 0/1 0/0 0/0 0/0 0/0 0/. 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/1 0/0 0/0 0/. 0/0 0/0 0/0 0/. 0/0 0/0 0/. 0/0 0/0 0/1 0/. 0/0 0/. 0/0 0/0 0/0 0/0 0/0 0/. 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/1 0/0 0/0 0/0 0/. 0/0 0/0 0/0 0/0 0/0 0/. 0/0 0/0 0/0 CC1.8.Chr03 maker gene 38899971 38948324 . - . ID=Ccan003g024990;Name=Ccan003g024990;
+
+### Idées de tests
+
+#### bedtools map
+
+```{bash}
+sort -k1,1 -k4,4n /shared/projects/te_coffea/Tests_TEs/Genes_TEs/genes_only.gff3 > sorted_genes_only.gff3
+
+```
+
+head de sorted_test_biallelic.vcf
+
+20731-NoIndex-L002-MERGED C-127 C-133 C-147 C001-MERGED C002-MERGED C003-MERGED C004-MERGED C005-MERGED C006-MERGED C007-MERGED C008-MERGED C009-MERGED C010-MERGED C011-MERGED C012-MERGED C013-MERGED C014-MERGED C016- MERGED C017-MERGED C018-MERGED C019-MERGED C020-MERGED C021-MERGED C022-MERGED C023-MERGED C025-MERGED C026-ME RGED C027-MERGED C029-MERGED C030-MERGED C031-MERGED C032-MERGED C033-MERGED C034-MERGED C035-MERGED C037-MERG ED C038-MERGED C039-MERGED C040-MERGED C041-MERGED C042-MERGED C044-MERGED C045-MERGED C047-MERGED C403-Boim7- 2LanesMerged C404-Briz2-2LanesMerged D-7 D-8 E100032897_L1_COFtwpgR108321-704 E100032897_L1_COFtwpgR108322-705 E100032897_L1 \_COFtwpgR108323-706 E100033056_L1_COFpytlR112806-724 E100033056_L1_COFpytlR112807-726 E100033056_L1_COFpytlR112808-728 E100033056_L1_COFpytlR112809-729 E100033056_L1_COFpytlR112810-730 E100033056_L1_COFpytlR112811-731 E100033056_L1_COFp ytlR112812-733 E100033056_L1_COFpytlR112813-734 E100033056_L1_COFpytlR112814-735 E100033056_L1_COFpytlR112815-736 E100 033056_L1_COFpytlR112816-737 E100033056_L1_COFpytlR112817-738 E100033056_L1_COFpytlR112818-739 E100033056_L1_COFpytlR112819-7 40 E100033056_L1_COFpytlR112820-741 E100033056_L1_COFpytlR112821-742 E100033056_L1_COFpytlR112822-743 E100033056_L1_COFpytlR112823-744 E100033056_L1_COFpytlR112824-746 E100033056_L1_COFpytlR112825-747 E100033056_L1_COFpytlR112826-748 E100033056_L1_COFpytlR112827-749 E100033056_L1_COFpytlR112828-750 E100033056_L1_COFpytlR112829-751 E100033056_L1_COFpytlR112830-752 E100033056_L1_COFpytlR112831-753 E100033056_L1_COFpytlR112832-754 E100033056_L1_COFpytlR112833-755 E100033056_L1_COFpytlR112834-756 E100033056_L1_COFpytlR112835-757 E100033914_L1_COFphndR129154-638 E100033914_L1_COFphndR129155-639 J-18 J-2 J-22 J-30 J-9 K4Y17Y2-NoIndex-L002-MERGED M1 M2 M3 M4 N-11 N-37 N-38 N-39 N-42 N-5 S-152 S-157 TR10m TR11m TR12m TR13m TR14m TR15m TR4m TR5m TR6m TR9m ZO16
+
+CC1.8.Chr01 5895 test_ins_18 GCATCC <INS:ME> . PASS SVTYPE=LTR;MEI=CC1.8.Chr03_27558004_27574509;MEPRED=PASS;0START=5895;0END=5900;SVLEN=4298;MESTRAND=+;AC=1 GT 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/1 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0
+
+CC1.8.Chr01 6113 test_ins_19 GTTTAC <INS:ME> . PASS SVTYPE=LTR;MEI=CC1.8.Chr06_27860847_27874062;MEPRED=PASS;0START=6113;0END=6118;SVLEN=823;MESTRAND=-;AC=3 GT 0/1 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/1 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/1 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0
+
+**Nombre de TE par gène**
+
+```{bash}
+bedtools map -a /shared/projects/te_coffea/Tests_TEs/Genes_TEs/sorted_genes_only.gff3 -b /shared/projects/te_coffea/Tests_TEs/Genes_TEs/sorted_test_biallelic.vcf -c 2 -o count > /shared/projects/te_coffea/Tests_TEs/Genes_TEs/genes_te_count.txt
+
+```
+
+`-c 2` : On prend la 2ᵉ colonne (`chromosome`) du fichier `b` (VCF).
+
+`-o count` : On compte combien de TE tombent dans chaque gène.
+
+**Moyenne de la taille des TE par gène**
+
+```{bash}
+bedtools map -a /shared/projects/te_coffea/Tests_TEs/Genes_TEs/sorted_genes_only.gff3 -b /shared/projects/te_coffea/Tests_TEs/Genes_TEs/sorted_test_biallelic.vcf -c 8 -o mean > genes_te_mean_size.txt
+
+```
+
+-   `-c 8` : On prend la colonne contenant `SVLEN` (longueur de l'élément transposable).
+
+<!-- -->
+
+-   `-o mean` : On calcule la moyenne des tailles des TE par gène.
+
+**Liste des types de TE (SINE, LINE, LTR, etc.) qui affectent chaque gène**
+
+```{bash}
+bedtools map -a sorted_genes_only.gff3 -b sorted_test_biallelic.vcf -c 8 -o distinct > genes_te_types.txt
+
+```
+
+-   `-c 8` : Prend la colonne où se trouve le `SVTYPE` (type du TE).
+
+<!-- -->
+
+-   `-o distinct` : Ne garde que les valeurs uniques.
+
+CC1.8.Chr01 maker gene 45259 46932 . - . ID=Ccan001g005000;Name=Ccan001g005000; .
+
+CC1.8.Chr01 maker gene 50006 57629 . - . ID=Ccan001g005010;Name=Ccan001g005010; .
+
+CC1.8.Chr01 maker gene 65442 66071 . - . ID=Ccan001g005020;Name=Ccan001g005020; .
+
+CC1.8.Chr01 maker gene 67031 86025 . + . ID=Ccan001g005030;Name=Ccan001g005030; SVTYPE=L TR;MEI=CC1.8.Chr01_23082017_23097928;MEPRED=PASS;0START=67434;0END=67455;SVLEN=5975;MESTRAND=-;AC=13,SVTYPE=LTR;MEI=CC1. 8.Chr07_17939462_17944260;MEPRED=PASS;0START=81499;0END=81504;SVLEN=NA;MESTRAND=-;AC=1,SVTYPE=LTR;MEI=Contig2895_17778_2 9923;MEPRED=PASS;0START=68561;0END=68568;SVLEN=NA;MESTRAND=+;AC=1
+
+
+## Ptits tests en plus MEA MEI individuellement
+
+### Nettoyer les noms des ind dans MEI-A
+
+```{bash}
+grep "#CHROM" test_MEI_jointcall.vcf
+grep "#CHROM" test_MEI_jointcall.vcf | sed 's/result\///g'
+grep "#CHROM" test_MEI_jointcall.vcf | sed -E 's/result\///g; s/\.bam//g'
+
+# avant de changer
+cp test_MEI_jointcall.vcf test_MEI_jointcall_backup.vcf
+# modif du fichier pour enlever result/ et .bam et correspondre aux listes d'individus
+sed -Ei 's/result\///g; s/\.bam//g' test_MEI_jointcall.vcf
+
+```
+
+### Doc avec les infos MEI : CHROM POS REF ALT MEI(=nom TE)
+
+```{bash}
+vcftools --vcf test_MEI_jointcall.vcf --get-INFO MEI --remove-filtered-all --out test_INFO_MEI_filtered
+```
+
+#### Retrouver les infos MEI sur TE, prendre 2 premieres colonnes (pos+chr) et sur ce doc avec la position nous donne infos de MEI des positions où l'on a retrouvé notre TE
+
+```{bash}
+grep CC1.8.Chr07_17939462_17944260 test_INFO_MEI.INFO | cut -f1,2 > test_yb_positions
+
+vcftools --positions test_yb_positions --vcf test_MEI_jointcall.vcf --out subset_vcf_MEI_TE1 --recode --recode-INFO-all
+```
+
+```{bash}
+vcftools --vcf test_MEI_jointcall.vcf --keep tokeep_test_yann --counts --mac 1 --out test_counts_yann
+```
+
+-   `--keep tokeep_test_yann` : Garde uniquement les individus listés dans le fichier `tokeep_test_yann`. Ce fichier doit contenir une liste d’identifiants d’échantillons.
+
+-   `--counts` : Génère un fichier contenant des statistiques sur les génotypes, notamment le nombre d'allèles de référence et alternatifs.
+
+-   `--mac 1` : Filtre pour ne garder que les variants ayant une **Minor Allele Count (MAC)** d’au moins **1**, c’est-à-dire qu’au moins un individu possède l’allèle minoritaire.
+
+### Matrice par individus des infos MEI-A
+
+```{bash}
+vcftools --vcf test_MEI_jointcall.vcf --012 --out Tests_TEs/test_MEI_012
+vcftools --vcf test_MEI_jointcall.vcf --remove-filtered-all --012 --out Tests_TEs/test_MEI_012_filtered
+
+vcftools --vcf test_MEA_jointcall.vcf --012 --out Tests_TEs/test_MEA_012
+vcftools --vcf test_MEA_jointcall.vcf --remove-filtered-all --012 --out Tests_TEs/test_MEA_012_filtered
+
+# sur MEI et MEA combinés
+vcftools --gzvcf /shared/projects/te_coffea/vcf_for_phasing/test_biallelic.vcf.gz --remove-filtered-all --012 --out Tests_TEs/Matrice_indv/test_012_filtered
+```
+
+#### Compter les occurrences des allèles
+
+```{bash}
+vcftools --vcf test_MEI_jointcall.vcf --counts --mac 1 --out Tests_TEs/test_MEI_counts
+vcftools --vcf test_MEI_jointcall.vcf --remove-filtered-all --counts --mac 1 --out Tests_TEs/test_MEI_counts_filtered
+```
+
+```{bash}
+vcftools --vcf test_MEA_jointcall.vcf --counts --mac 1 --out Tests_TEs/test_MEA_counts
+vcftools --vcf test_MEA_jointcall.vcf --remove-filtered-all --counts --mac 1 --out Tests_TEs/test_MEA_counts_filtered
+```
+
+```{bash}
+vcftools --gzvcf /shared/projects/te_coffea/vcf_for_phasing/test_biallelic.vcf.gz --remove-filtered-all --counts --mac 1 --out /shared/projects/te_coffea/Tests_TEs/Counts/test_counts_filtered
+```
+
+fichier `test_counts.frq.count`, qui contient le nombre d’occurrences des allèles pour chaque variant.
+
+## Changer MEA en MEI
+
+```{bash}
+sed -E 's/\b0\b/X/g; s/\b1\b/0/g; s/\bX\b/1/g' test_MEA_jointcall.vcf > MEA_transfo_to_MEI.vcf
+
+```
+
+## 

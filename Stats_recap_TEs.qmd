@@ -1,0 +1,2546 @@
+---
+title: "Statistical_recap_TEs"
+author: "Jas"
+format: html
+editor: visual
+---
+
+# Stats Recap TEs
+
+write.table(unknown_individuals, "\~/M2/Cafeier/Codes/Matrice_indv/unknown_individuals.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+unknown_individuals \<- read.table("\~/M2/Cafeier/Codes/Matrice_indv/unknown_individuals.txt", header=TRUE, sep="\t")
+
+```{r}
+# Chargement du fichier
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+# enlever les gyspsy non assignés
+# Filtrer pour retirer les lignes où Family est vide
+data <- data %>% filter(Family != "")
+# enlever les individus sans autorisation d'utilisation... :3
+library(dplyr)
+data <- data %>% select(-all_of(c(
+  "X20135.NoIndex.L003.MERGED", "X20159.NoIndex.L005.MERGED", "X20511_NoIndex_L001.MERGED", 
+  "X20650.NoIndex.L007.MERGED", "X20658.NoIndex.L002.MERGED", "X20708.NoIndex.L008.MERGED", 
+  "X20723.NoIndex.L007.MERGED", "X20731.NoIndex.L002.MERGED", "C.147", "C018.MERGED", 
+  "J.18", "J.2", "J.22", "J.9", "M1", "M2", "M3", "M4", 
+  "N.11", "N.37", "N.38", "N.39", "N.42", "N.5"
+)))
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer une liste de populations basée sur Group_analysis
+populations <- split(correspondance$formatted_id, correspondance$Group_analysis)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+# Conversion des colonnes d'individus en numérique
+for (i in 4:99) {
+  data[, i] <- as.numeric(as.character(data[, i]))
+}
+
+# Chargement des bibliothèques nécessaires
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Création d'un dataframe pour stocker les résultats
+recap_data_TEs <- data.frame()
+
+# Pour chaque individu, calculer pour chaque famille
+for (i in 4:99) {
+  indiv_name <- colnames(data)[i]
+  
+  # Obtenir toutes les familles uniques pour RLG (Gypsy) et RLC (Copia)
+  gypsy_families <- unique(data$Family[data$Superfamily == "RLG"])
+  copia_families <- unique(data$Family[data$Superfamily == "RLC"])
+  
+  # Déterminer la population de l'individu
+  pop <- "Unknown"
+  if (indiv_name %in% pop_A) pop <- "A"
+  else if (indiv_name %in% pop_G) pop <- "G"
+  else if (indiv_name %in% pop_C) pop <- "C"
+  else if (indiv_name %in% pop_D) pop <- "D"
+  else if (indiv_name %in% pop_hb) pop <- "hb"
+  else if (indiv_name %in% pop_B) pop <- "B"
+  else if (indiv_name %in% pop_O) pop <- "O"
+  else if (indiv_name %in% pop_E) pop <- "E"
+  else if (indiv_name %in% pop_R) pop <- "R"
+  else if (indiv_name %in% pop_V) pop <- "V"
+  
+  # Fonction pour traiter chaque famille
+  process_family <- function(family, superfamily) {
+    total_family <- sum(data$Superfamily == superfamily & data$Family == family)
+    sum_family <- sum(data[data$Superfamily == superfamily & data$Family == family, i])
+    count_hetero_family <- sum(data[data$Superfamily == superfamily & data$Family == family, i] == 1)
+    count_homo_family <- sum(data[data$Superfamily == superfamily & data$Family == family, i] == 2)
+    count_abs_family <- sum(data[data$Superfamily == superfamily & data$Family == family, i] == 0)
+    TEs_load <- count_hetero_family + (2 * count_homo_family)
+    ratio_family <- count_hetero_family / count_homo_family
+
+    recap_data_TEs <<- rbind(recap_data_TEs, data.frame(
+      Individual = indiv_name, 
+      Population = pop,
+      Superfamily = ifelse(superfamily == "RLG", "Gypsy", "Copia"),
+      Family = family,
+      Count = sum_family,
+      Count_hetero = count_hetero_family,
+      Count_homo = count_homo_family,
+      Ratio = count_hetero_family/count_homo_family,
+      Ratio_proportion = (count_hetero_family / total_family) / (count_homo_family / total_family),
+      Total = total_family,
+      Proportion = sum_family / (2*total_family),
+      Proportion_hetero = count_hetero_family / total_family,
+      Proportion_homo = count_homo_family / total_family
+    ))
+  }
+
+  # Appliquer la fonction à chaque famille Gypsy et Copia
+  sapply(gypsy_families, process_family, superfamily = "RLG")
+  sapply(copia_families, process_family, superfamily = "RLC")
+}
+
+# Grouper les populations selon les catégories
+recap_data_TEs <- recap_data_TEs %>%
+  mutate(Population_Group = case_when(
+    Population %in% c("A", "G") ~ "AG",
+    Population == "C" ~ "C",
+    Population == "D" ~ "D",
+    Population == "hb" ~ "hb",
+    Population %in% c("B", "O") ~ "OB",
+    Population %in% c("E", "R") ~ "ER",
+    Population == "V" ~ "V",
+    TRUE ~ "Unknown"
+  ))
+
+# Réorganiser les niveaux de la variable Population_Group
+recap_data_TEs$Population_Group <- factor(recap_data_TEs$Population_Group, 
+                                           levels = c("AG", "C", "D", "hb", "OB", "ER", "V", "Unknown"))
+
+print(recap_data_TEs)
+
+# Enregistrer le fichier final
+write.table(recap_data_TEs, "~/M2/Cafeier/Codes/Matrice_indv/recap_data_TEs.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+```
+
+Fonction pour traiter chaque famille
+
+process_family \<- function(family, superfamily) {
+
+total_family \<- sum(data$Superfamily == superfamily & data$Family == family) \# Nb de lignes avec un TE de la famille
+
+sum_family \<- sum(data\[data$Superfamily == superfamily & data$Family == family, i\]) \# Nb de lignes avec un TE de la famille chez l'indv
+
+count_hetero_family \<- sum(data\[data$Superfamily == superfamily & data$Family == family, i\] == 1) \# Nb de lignes avec un TE hetero de la famille chez l'indv
+
+count_homo_family \<- sum(data\[data$Superfamily == superfamily & data$Family == family, i\] == 2) \# Nb de lignes avec un TE homo de la famille chez l'indv
+
+count_abs_family \<- sum(data\[data$Superfamily == superfamily & data$Family == family, i\] == 0) \# Nb de lignes avec un TE abs de la famille chez l'indv
+
+TEs_load \<- count_hetero_family + (2 \* count_homo_family)
+
+ratio_family \<- count_hetero_family / count_homo_hetero
+
+recap_data_TEs \<\<- rbind(recap_data_TEs, data.frame( Individual = indiv_name, Population = pop, Superfamily = ifelse(superfamily == "RLG", "Gypsy", "Copia"), Family = family, Count = TEs_load, Count_hetero = count_hetero_family, Count_homo = count_homo_family, Ratio = ratio_family, \# nb hetero/nb homo Total = total_family, \# nb ligne avec un TE d'une famille Proportion = sum_family / (2\*total_family), \# charge TE (diploide !!!) Proportion_hetero = count_hetero_family / total_family, \# ici proportion au niv indv et non genome Proportion_homo = count_homo_family / total_family
+
+### Abondance par chromosome
+
+```{r}
+# Chargement du fichier
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+# enlever les gyspsy non assignés
+# Filtrer pour retirer les lignes où Family est vide
+data <- data %>% filter(Family != "")
+# enlever les individus sans autorisation d'utilisation... :3
+library(dplyr)
+data <- data %>% select(-all_of(c(
+  "X20135.NoIndex.L003.MERGED", "X20159.NoIndex.L005.MERGED", "X20511_NoIndex_L001.MERGED", 
+  "X20650.NoIndex.L007.MERGED", "X20658.NoIndex.L002.MERGED", "X20708.NoIndex.L008.MERGED", 
+  "X20723.NoIndex.L007.MERGED", "X20731.NoIndex.L002.MERGED", "C.147", "C018.MERGED", 
+  "J.18", "J.2", "J.22", "J.9", "M1", "M2", "M3", "M4", 
+  "N.11", "N.37", "N.38", "N.39", "N.42", "N.5"
+)))
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer une liste de populations basée sur Group_analysis
+populations <- split(correspondance$formatted_id, correspondance$Group_analysis)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+# Récupérer les chromosomes uniques
+chromosomes <- unique(data$CHROM)
+
+# Dataframe pour stocker les résultats
+recap_data_TEs_chr <- data.frame()
+
+# Boucle sur les chromosomes
+for (chrom in chromosomes) {
+  data_chr <- data %>% filter(CHROM == chrom)
+  
+  for (i in 4:99) {
+    indiv_name <- colnames(data_chr)[i]
+    
+    # Obtenir toutes les familles uniques pour RLG (Gypsy) et RLC (Copia)
+    gypsy_families <- unique(data_chr$Family[data_chr$Superfamily == "RLG"])
+    copia_families <- unique(data_chr$Family[data_chr$Superfamily == "RLC"])
+    
+    # Déterminer la population de l'individu
+    pop <- "Unknown"
+    if (indiv_name %in% pop_A) pop <- "A"
+    else if (indiv_name %in% pop_G) pop <- "G"
+    else if (indiv_name %in% pop_C) pop <- "C"
+    else if (indiv_name %in% pop_D) pop <- "D"
+    else if (indiv_name %in% pop_hb) pop <- "hb"
+    else if (indiv_name %in% pop_B) pop <- "B"
+    else if (indiv_name %in% pop_O) pop <- "O"
+    else if (indiv_name %in% pop_E) pop <- "E"
+    else if (indiv_name %in% pop_R) pop <- "R"
+    else if (indiv_name %in% pop_V) pop <- "V"
+
+    # Fonction pour traiter chaque famille
+    process_family <- function(family, superfamily) {
+      total_family <- sum(data_chr$Superfamily == superfamily & data_chr$Family == family)
+      sum_family <- sum(data_chr[data_chr$Superfamily == superfamily & data_chr$Family == family, i])
+      count_hetero_family <- sum(data_chr[data_chr$Superfamily == superfamily & data_chr$Family == family, i] == 1)
+      count_homo_family <- sum(data_chr[data_chr$Superfamily == superfamily & data_chr$Family == family, i] == 2)
+      count_abs_family <- sum(data_chr[data_chr$Superfamily == superfamily & data_chr$Family == family, i] == 0)
+      TEs_load <- count_hetero_family + (2 * count_homo_family)
+
+      recap_data_TEs_chr <<- rbind(recap_data_TEs_chr, data.frame(
+        Chromosome = chrom,
+        Individual = indiv_name, 
+        Population = pop,
+        Superfamily = ifelse(superfamily == "RLG", "Gypsy", "Copia"),
+        Family = family,
+        Count = sum_family,
+        Count_hetero = count_hetero_family,
+        Count_homo = count_homo_family,
+        Ratio = ifelse(count_homo_family == 0, NA, count_hetero_family / count_homo_family),
+        Ratio_proportion = ifelse(count_homo_family == 0, NA,
+                                  (count_hetero_family / total_family) / (count_homo_family / total_family)),
+        Total = total_family,
+        Proportion = sum_family / (2 * total_family),
+        Proportion_hetero = count_hetero_family / total_family,
+        Proportion_homo = count_homo_family / total_family
+      ))
+    }
+
+    # Appliquer la fonction à chaque famille
+    sapply(gypsy_families, process_family, superfamily = "RLG")
+    sapply(copia_families, process_family, superfamily = "RLC")
+  }
+}
+
+# Grouper les populations comme avant
+recap_data_TEs_chr <- recap_data_TEs_chr %>%
+  mutate(Population_Group = case_when(
+    Population %in% c("A", "G") ~ "AG",
+    Population == "C" ~ "C",
+    Population == "D" ~ "D",
+    Population == "hb" ~ "hb",
+    Population %in% c("B", "O") ~ "OB",
+    Population %in% c("E", "R") ~ "ER",
+    Population == "V" ~ "V",
+    TRUE ~ "Unknown"
+  ))
+
+# Réorganiser les niveaux
+recap_data_TEs_chr$Population_Group <- factor(recap_data_TEs_chr$Population_Group,
+                                               levels = c("C", "D", "AG", "hb",  "ER","OB", "V", "Unknown"))
+
+# Ajouter la longueur des chr extraites du fa.fai genome ref :
+chr_length <- read.table("~/M2/Cafeier/Codes/TEs/Coffea_canephora_chr_length.txt", header=TRUE, sep="\t")
+
+recap_data_TEs_chr<- merge(recap_data_TEs_chr, chr_length, by = "Chromosome")
+# Rajouter une densité en TEs par chromosome
+recap_data_TEs_chr <- recap_data_TEs_chr %>%
+  mutate(chr_length = as.numeric(chr_length),
+         chr_length_Mbp = chr_length / 1e6,  # convertir en Mb
+         Density = Count / chr_length_Mbp)
+
+# Visualisation ou analyse ensuite
+print(recap_data_TEs_chr)
+write.table(recap_data_TEs_chr, "~/M2/Cafeier/Codes/Matrice_indv/recap_data_TEs_chr.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+```
+
+Mes longueurs de chromosomes (extraites du genome ref fa.fai) CC1.8.Chr01 66355530 CC1.8.Chr02 79361681 CC1.8.Chr03 42304562\
+CC1.8.Chr04 51033085\
+CC1.8.Chr05 50946795\
+CC1.8.Chr06 67836911 CC1.8.Chr07 42698186\
+CC1.8.Chr08 50124509\
+CC1.8.Chr09 41966822 CC1.8.Chr10 50112997 CC1.8.Chr11 42863559
+
+### Par fenetre de 1Mb
+
+recap_data_TEs_window_1Mb.txt : les données brutes pour chaque individu, famille et fenêtre
+
+window_summary_1Mb.txt : un résumé statistique par fenêtre \>\>\> pour les plotsss...maybe ???
+
+je tente d'optimiser parce que c'est loooooooong, comme du café alongé :3
+
+```{r}
+# Chargement du fichier
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+# enlever les gyspsy non assignés
+# Filtrer pour retirer les lignes où Family est vide
+data <- data %>% filter(Family != "")
+# enlever les individus sans autorisation d'utilisation... :3
+library(dplyr)
+data <- data %>% select(-all_of(c(
+  "X20135.NoIndex.L003.MERGED", "X20159.NoIndex.L005.MERGED", "X20511_NoIndex_L001.MERGED", 
+  "X20650.NoIndex.L007.MERGED", "X20658.NoIndex.L002.MERGED", "X20708.NoIndex.L008.MERGED", 
+  "X20723.NoIndex.L007.MERGED", "X20731.NoIndex.L002.MERGED", "C.147", "C018.MERGED", 
+  "J.18", "J.2", "J.22", "J.9", "M1", "M2", "M3", "M4", 
+  "N.11", "N.37", "N.38", "N.39", "N.42", "N.5"
+)))
+
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer une liste de populations basée sur Group_analysis
+populations <- split(correspondance$formatted_id, correspondance$Group_analysis)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+
+# Récupérer les chromosomes uniques
+chromosomes <- unique(data$CHROM)
+
+# Charger les longueurs des chromosomes
+chr_length <- read.table("~/M2/Cafeier/Codes/TEs/Coffea_canephora_chr_length.txt", header=TRUE, sep="\t")
+
+# Dataframe pour stocker les résultats par fenêtre de 1Mb
+recap_data_TEs_window <- data.frame()
+
+# Taille de la fenêtre en bp
+window_size <- 1e6
+
+
+# Préparer la liste des résultats
+results_list <- list()
+row_index <- 1
+
+# Préparer la correspondance ID → Population
+id_to_pop <- setNames(correspondance$Group_analysis, correspondance$formatted_id)
+
+for (chrom in chromosomes) {
+  data_chr <- data %>% filter(CHROM == chrom)
+  chr_len <- chr_length$chr_length[chr_length$Chromosome == chrom]
+  num_windows <- ceiling(chr_len / window_size)
+  
+  for (w in 1:num_windows) {
+    start_pos <- (w - 1) * window_size + 1
+    end_pos <- min(w * window_size, chr_len)
+    data_window <- data_chr %>% filter(POS >= start_pos & POS <= end_pos)
+    
+    if (nrow(data_window) == 0) next
+    
+    for (i in 4:99) {
+      if (i <= ncol(data_window)) {
+        indiv_name <- colnames(data_window)[i]
+        pop <- id_to_pop[indiv_name]
+        if (is.na(pop)) pop <- "Unknown"
+        
+        gypsy_families <- unique(data_window$Family[data_window$Superfamily == "RLG"])
+        copia_families <- unique(data_window$Family[data_window$Superfamily == "RLC"])
+        
+        process_family_window <- function(family, superfamily) {
+          family_data <- data_window[data_window$Superfamily == superfamily & data_window$Family == family, ]
+          if (nrow(family_data) == 0) return()
+          
+          total_family <- nrow(family_data)
+          sum_family <- sum(family_data[, i])
+          count_hetero_family <- sum(family_data[, i] == 1)
+          count_homo_family <- sum(family_data[, i] == 2)
+          count_abs_family <- sum(family_data[, i] == 0)
+          TEs_load <- count_hetero_family + (2 * count_homo_family)
+          
+          results_list[[row_index]] <<- data.frame(
+            Chromosome = chrom,
+            Window = w,
+            Window_start = start_pos,
+            Window_end = end_pos,
+            Individual = indiv_name,
+            Population = pop,
+            Superfamily = ifelse(superfamily == "RLG", "Gypsy", "Copia"),
+            Family = family,
+            Count = sum_family,
+            Count_hetero = count_hetero_family,
+            Count_homo = count_homo_family,
+            Ratio = ifelse(count_homo_family == 0, NA, count_hetero_family / count_homo_family),
+            Ratio_proportion = ifelse(count_homo_family == 0, NA,
+                                      (count_hetero_family / total_family) / (count_homo_family / total_family)),
+            Total = total_family,
+            Proportion = sum_family / (2 * total_family),
+            Proportion_hetero = count_hetero_family / total_family,
+            Proportion_homo = count_homo_family / total_family,
+            Density = sum_family / (window_size / 1e6)
+          )
+          row_index <<- row_index + 1
+        }
+        
+        sapply(gypsy_families, process_family_window, superfamily = "RLG")
+        sapply(copia_families, process_family_window, superfamily = "RLC")
+      }
+    }
+  }
+}
+
+# Combiner les résultats
+recap_data_TEs_window <- bind_rows(results_list)
+
+# Grouper les populations comme avant
+recap_data_TEs_window <- recap_data_TEs_window %>%
+  mutate(Population_Group = case_when(
+    Population == "C" ~ "C",
+    Population == "D" ~ "D",
+    Population %in% c("A", "G") ~ "AG",
+    Population == "hb" ~ "hb",
+    Population %in% c("E", "R") ~ "ER",
+    Population %in% c("B", "O") ~ "OB",
+    Population == "V" ~ "V",
+    TRUE ~ "Unknown"
+  ))
+
+# Réorganiser
+recap_data_TEs_window$Population_Group <- factor(recap_data_TEs_window$Population_Group,
+                                              levels = c( "C", "D","AG", "hb","ER","OB", "V", "Unknown"))
+
+# Visualisation ou analyse ensuite
+print(recap_data_TEs_window)
+
+# Sauvegarde des résultats
+write.table(recap_data_TEs_window, "~/M2/Cafeier/Codes/Matrice_indv/recap_data_TEs_window_1Mb.txt", 
+            sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+
+
+
+# Calcul des statistiques résumées par fenêtre
+window_summary <- recap_data_TEs_window %>%
+  group_by(Chromosome, Window, Window_start, Window_end, Population_Group, Superfamily) %>%
+  summarise(
+    Mean_Count = mean(Count, na.rm = TRUE),
+    Mean_Density = mean(Density, na.rm = TRUE),
+    Median_Density = median(Density, na.rm = TRUE),
+    SD_Density = sd(Density, na.rm = TRUE),
+    Total_TEs = sum(Count, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+print(window_summary)
+# Sauvegarde des statistiques résumées
+write.table(window_summary, "~/M2/Cafeier/Codes/Matrice_indv/window_summary_1Mb.txt", 
+            sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Visualisation simple des densités moyennes par fenêtre
+library(ggplot2)
+
+# Créer une visualisation pour un chromosome spécifique (ex: premier chromosome)
+first_chrom <- chromosomes[1]
+
+ggplot(window_summary %>% filter(Chromosome == first_chrom), 
+       aes(x = Window, y = Mean_Density, color = Superfamily, group = interaction(Population_Group, Superfamily))) +
+  geom_line() +
+  geom_point(size = 1) +
+  facet_wrap(~Population_Group, ncol = 1) +
+  labs(title = paste("Densité moyenne d'éléments transposables par fenêtre de 1Mb -", first_chrom),
+       x = "Fenêtre (1Mb)",
+       y = "Densité moyenne (nombre/Mb)") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+### Par population summary
+
+```{r}
+# petit summary du tableau par individus
+recap_data_TEs_byPops <- recap_data_TEs %>%
+  group_by(Population_Group, Superfamily, Family) %>%
+  summarize(
+    Mean_Count = mean(Count, na.rm = TRUE),
+    Median_Count = median(Count, na.rm = TRUE),
+    SD_Count = sd(Count, na.rm = TRUE),
+    Quantil75_Count = quantile(Count,probs=0.75, na.rm = TRUE),
+    Quantil25_Count = quantile(Count,probs=0.25, na.rm = TRUE),
+    Mean_Proportion = mean(Proportion, na.rm = TRUE),
+    Median_Proportion = median(Proportion, na.rm = TRUE),
+    SD_Proportion = sd(Proportion, na.rm = TRUE),
+    Quantil75_Proportion = quantile(Proportion,probs=0.75, na.rm = TRUE),
+    Quantil25_Proportion = quantile(Proportion,probs=0.25, na.rm = TRUE),
+    Mean_Hetero = mean(Count_hetero, na.rm = TRUE),
+    Median_Hetero = median(Count_hetero, na.rm = TRUE),
+    Quantil75_Hetero = quantile(Count_hetero,probs=0.75, na.rm = TRUE),
+    Quantil25_Hetero = quantile(Count_hetero,probs=0.25, na.rm = TRUE),
+    Mean_Proportion_hetero = mean(Proportion_hetero, na.rm = TRUE),
+    Median_Proportion_hetero = median(Proportion_hetero, na.rm = TRUE),
+    SD_Proportion_hetero = sd(Proportion_hetero, na.rm = TRUE),
+    Quantil75_Proportion_hetero = quantile(Proportion_hetero,probs=0.75, na.rm = TRUE),
+    Quantil25_Proportion_hetero = quantile(Proportion_hetero,probs=0.25, na.rm = TRUE),
+    Mean_Homo = mean(Count_homo, na.rm = TRUE),
+    Median_Homo = median(Count_homo, na.rm = TRUE),
+    Quantil75_Homo = quantile(Count_homo,probs=0.75, na.rm = TRUE),
+    Quantil25_Homo = quantile(Count_homo,probs=0.25, na.rm = TRUE),
+    Mean_Proportion_homo = mean(Proportion_homo, na.rm = TRUE),
+    Median_Proportion_homo = median(Proportion_homo, na.rm = TRUE),
+    SD_Proportion_homo = sd(Proportion_homo, na.rm = TRUE),
+    Quantil75_Proportion_homo = quantile(Proportion_homo,probs=0.75, na.rm = TRUE),
+    Quantil25_Proportion_homo = quantile(Proportion_homo,probs=0.25, na.rm = TRUE),
+    Mean_Ratio = mean(Ratio, na.rm = TRUE),
+    Median_Ratio = median(Ratio, na.rm = TRUE),
+    Quantil75_Ratio = quantile(Ratio,probs=0.75, na.rm = TRUE),
+    Quantil25_Ratio = quantile(Ratio,probs=0.25, na.rm = TRUE),
+    SD_Ratio = sd(Ratio, na.rm = TRUE),
+    Count_NA = sum(is.na(Ratio)),
+    Total_Count = n(),
+    .groups = "drop"
+  )
+
+print(recap_data_TEs_byPops)
+# enregistrer le doc
+write.table(recap_data_TEs_byPops, "~/M2/Cafeier/Codes/Matrice_indv/recap_data_TEs_byPops.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+```
+
+# ACP
+
+```{r}
+library(ggplot2)
+X <- data
+#X <- subset(X, Superfamily=="RLC") # on peut enlever la ligne poour faire sur tous les tes ou changer RLC/G pour copia gypsy (ne pas oublier de changer le titre de la figure !!! ;)))
+X <- X[,4:which(colnames(X)=="ZO16")]
+X <- as.matrix(X)
+OK <- apply(X, 1, var)>0
+PCA <- prcomp(t(X[OK==TRUE,]), center = TRUE, scale. = TRUE) # faire pivoter qd var>0 et centrer reduire
+varexp <- PCA$sdev
+varexp <- varexp/sum(varexp) # % axe
+df <- as.data.frame(PCA$x[,1:2])
+df$ind <- rownames(df)
+df2 <- left_join(df, correspondance, by = c("ind"="formatted_id"))
+df3 <- subset(df2, Group_analysis %in% c("A","G", "B", "C", "D" ,"E", "O", "R", "V"))
+
+# Créer une nouvelle variable de groupe dans df3
+df3$Group_combined <- as.character(df3$Group_analysis)
+# Regrouper A et G en "AG" (ou AR si c'est ce que vous souhaitez)
+df3$Group_combined[df3$Group_analysis %in% c("A", "G")] <- "AG"
+# Regrouper O et B en "OB"
+df3$Group_combined[df3$Group_analysis %in% c("O", "B")] <- "OB"
+# Regrouper E et R en "ER"
+df3$Group_combined[df3$Group_analysis %in% c("E", "R")] <- "ER"
+# C et D sont déjà conservés dans Group_combined)
+
+# Calculer les pourcentages de variance expliquée pour les axes PC1 et PC2
+pc1_var <- round(varexp[1] * 100, 1)
+pc2_var <- round(varexp[2] * 100, 1)
+
+# Créer le graphique avec les nouveaux groupes combinés
+ggplot(df3) + 
+  geom_point(aes(PC1, PC2, color=Group_combined), size=5) +
+  labs(
+    title = "Analyse en Composantes Principales des éléments transposables LTR-RT",
+    subtitle = "au sein des groupes génétiques de caféiers robusta",
+    x = paste0("PC1 (", pc1_var, "%)"),
+    y = paste0("PC2 (", pc2_var, "%)"),
+    color = "Groupe"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, face = "bold")
+  )
+```
+
+## Avec plink
+
+Initier mon document vcf, pour cela je passe par R afin d'extraire les colonnes d'intéret
+
+```{r}
+# Garder seulement les colonnes CHROM, POS et Family :
+data_acp_plink <- data %>% select(CHROM, POS, Family)
+# Enregistrer en txt :
+write.table(data_acp_plink, file = "~/M2/Cafeier/Codes/Matrice_indv/data_acp_plink.txt", 
+            sep = "\t", quote = FALSE, row.names = FALSE)
+```
+
+**puis le changer en vcf sur le cluster**
+
+```{bash}
+vcftools --vcf /shared/projects/te_coffea/vcf_for_phasing/test_biallelic.vcf \
+         --recode \
+         --recode-INFO-all \
+         --positions /shared/projects/te_coffea/Tests_TEs/ACP/data_acp_plink.txt \
+         --out /shared/projects/te_coffea/Tests_TEs/ACP/data_acp_all
+
+```
+
+--vcf test_biallelic.vcf C’est ton fichier VCF d’origine
+
+--positions data_acp_plink.txt Garde uniquement les variants (lignes) présents dans ce fichier
+
+--recode Recrée un nouveau VCF filtré
+
+--recode-INFO-all Garde tous les champs INFO dans le nouveau fichier
+
+--out data_acp_all Nomme la sortie : data_acp_all.recode.vcf
+
+**Idem mtn pour chaque famille TE :**
+
+**Creer des fichiers avec mes positions et chr par famille TEs**
+
+cut -f3 /shared/projects/te_coffea/Tests_TEs/ACP/data_acp_plink.txt \| sort \| uniq \> families.txt
+
+```{bash}
+#!/bin/bash
+module load vcftools/0.1.16
+
+# Fichier d'entrée
+input_vcf="/shared/projects/te_coffea/vcf_for_phasing/test_biallelic.vcf"
+positions_file="/shared/projects/te_coffea/Tests_TEs/ACP/data_acp_plink.txt"
+output_dir="/shared/projects/te_coffea/Tests_TEs/ACP"
+
+# Nettoyage du fichier pour supprimer les retours Windows et ignorer l'en-tête
+positions_clean="${output_dir}/positions_clean.txt"
+tail -n +2 "$positions_file" | tr -d '\r' > "$positions_clean"
+
+# Extraire les familles uniques proprement
+cut -f3 "$positions_clean" | sort | uniq > "${output_dir}/families.txt"
+
+# Pour chaque famille unique
+while read family; do
+    echo "Traitement de la famille : $family"
+
+    # Créer un fichier avec les positions de cette famille
+    grep -P "\t$family$" "$positions_clean" | cut -f1,2 > "${output_dir}/${family}_positions.txt"
+    
+    # Exécuter vcftools avec ces positions
+    vcftools --vcf "$input_vcf" \
+             --recode \
+             --recode-INFO-all \
+             --positions "${output_dir}/${family}_positions.txt" \
+             --out "${output_dir}/${family}_data_acp_all"
+done < "${output_dir}/families.txt"
+
+```
+
+**Convertir en plink et effectuer l'ACP par famille TE**
+
+Yann sur Arganier acp
+
+plink --bfile thinned_filtered_all --double-id --pca --out PCA_thinned_all --allow-extra-chr ALE_data_acp_all.recode.vcf
+
+`--vcf-half-call m` dit à PLINK de traiter les appels incomplets comme des "**missing"** (`./.`)
+
+```{bash}
+# pour toutes les familles TEs:
+
+    plink --vcf "data_acp_all.recode.vcf" \
+          --make-bed \
+          --out "/shared/projects/te_coffea/Tests_TEs/ACP/PCA_results/All_family_plink" \
+          --allow-extra-chr 0 \
+          --double-id \
+          --vcf-half-call m
+          
+    plink --bfile "/shared/projects/te_coffea/Tests_TEs/ACP/PCA_results/All_family_plink" \
+          --pca \
+          --out "/shared/projects/te_coffea/Tests_TEs/ACP/PCA_results/All_family_PCA" \
+          --allow-extra-chr 0
+```
+
+```{bash}
+#!/bin/bash
+
+module load plink2/
+
+vcf_dir="/shared/projects/te_coffea/Tests_TEs/ACP"
+output_dir="$vcf_dir/PCA_results"
+mkdir -p "$output_dir"
+
+# Pour chaque VCF généré précédemment
+for vcf_file in ${vcf_dir}/*_data_acp_all.recode.vcf; do
+    # Extraire le nom de la famille TE depuis le nom du fichier
+    family=$(basename "$vcf_file" "_data_acp_all.recode.vcf")
+
+    echo "Traitement de la famille : $family"
+
+    # Étape 1 : convertir VCF en format PLINK
+    plink --vcf "$vcf_file" \
+          --make-bed \
+          --out "${output_dir}/${family}_plink" \
+          --allow-extra-chr 0 \
+          --double-id \
+          --vcf-half-call m
+
+    # Étape 2 : lancer l’ACP
+    plink --bfile "${output_dir}/${family}_plink" \
+          --pca \
+          --out "${output_dir}/${family}_PCA" \
+          --allow-extra-chr 0
+done
+
+```
+
+#### Visualisation par famille TEs
+
+```{r}
+# Charge les packages nécessaires
+library(ggplot2)
+library(data.table)
+library(dplyr)
+
+# Le fichier .eigenvec 
+PCA_all_famTEs <- read.table("~/M2/Cafeier/Codes/Tests_TEs/ACP/All_family_PCA.eigenvec", header=FALSE, sep="")
+# Ajouter les noms de colonnes
+colnames(PCA_all_famTEs) <- c("FID", "IID", paste0("PC", 1:(ncol(PCA_all_famTEs)-2)))
+
+PCA_all_famTEs <- left_join(PCA_all_famTEs, correspondance, by = c("IID"="Bam"))
+PCA_all_famTEs <- subset(PCA_all_famTEs, Group_analysis %in% c("A","G", "B", "C", "D" ,"E", "O", "R", "hb", "V"))
+# ggplot(df3)+ geom_point(aes(PC1, PC2, color=Group_analysis), size=5)
+# Créer une nouvelle variable de groupe dans df3
+PCA_all_famTEs$Group_combined <- as.character(PCA_all_famTEs$Group_analysis)
+
+# Regrouper A et G en "AG" (ou AR si c'est ce que vous souhaitez)
+PCA_all_famTEs$Group_combined[PCA_all_famTEs$Group_analysis %in% c("A", "G")] <- "AG"
+
+# Regrouper O et B en "OB"
+PCA_all_famTEs$Group_combined[PCA_all_famTEs$Group_analysis %in% c("O", "B")] <- "OB"
+
+# Regrouper E et R en "ER"
+PCA_all_famTEs$Group_combined[PCA_all_famTEs$Group_analysis %in% c("E", "R")] <- "ER"
+
+# Lire les valeurs propres
+eigenvalues <- scan("~/M2/Cafeier/Codes/Tests_TEs/ACP/All_family_PCA.eigenval.txt")
+
+# Calculer le pourcentage de variance pour PC1 et PC2
+percentVar <- round(100 * eigenvalues / sum(eigenvalues), 2)
+
+# Extraire les deux premiers
+x_lab <- paste0("PC1 (", percentVar[1], "%)")
+y_lab <- paste0("PC2 (", percentVar[2], "%)")
+
+# Plot PCA (PC1 vs PC2)
+ggplot(PCA_all_famTEs, aes(x = PC1, y = PC2, label = IID, color = Group_combined)) +
+  geom_point(size = 2) +
+  # geom_text(size = 2.5, vjust = -0.5) +  # optionnel : afficher les IDs
+  theme_minimal() +
+  labs(
+  title = "Analyse en Composantes Principales des éléments transposables LTR-RT",
+  x = x_lab,
+  y = y_lab
+) +
+  theme(
+    legend.position = "right",
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, face = "bold")
+  )
+
+
+
+### 
+# Créer un data.frame pour les valeurs propres
+df_var <- data.frame(
+  PC = factor(1:length(eigenvalues)),  # Facteur numérique ordonné
+  Variance = percentVar
+)
+
+
+# Scree plot : pourcentage de variance expliquée
+scree_plot <- ggplot(df_var, aes(x = PC, y = Variance)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  geom_text(aes(label = paste0(Variance, "%")), vjust = -0.5, size = 3) +
+  labs(
+    title = "Variance expliquée par composante principale",
+    subtitle = "ACP basée sur l'ensemble du contenu en TEs",
+    x = "Composante principale",
+    y = "Pourcentage de variance (%)"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  )
+
+scree_plot
+```
+
+Maintenant j'automatise par famille TEs
+
+```{r}
+# Fonction pour obtenir les pourcentages explicatifs des axes :
+plot_pca_with_variance <- function(eigenvec_path, eigenval_path, file_name, correspondance_df, famille) {
+  # Charger les données PCA
+  PCA_df <- read.table(eigenvec_path, header = FALSE, sep = "")
+  colnames(PCA_df) <- c("FID", "IID", paste0("PC", 1:(ncol(PCA_df) - 2)))
+
+  # Lire les valeurs propres
+  eigenvalues <- scan(eigenval_path)
+  percentVar <- round(100 * eigenvalues / sum(eigenvalues), 2)
+  x_lab <- paste0("PC1 (", percentVar[1], "%)")
+  y_lab <- paste0("PC2 (", percentVar[2], "%)")
+
+  # Ajouter les groupes
+  PCA_df <- left_join(PCA_df, correspondance_df, by = c("IID" = "Bam"))
+  PCA_df <- subset(PCA_df, Group_analysis %in% c("A", "G", "B", "C", "D", "E", "O", "R", "hb", "V"))
+
+  PCA_df$Group_combined <- as.character(PCA_df$Group_analysis)
+  PCA_df$Group_combined[PCA_df$Group_analysis %in% c("A", "G")] <- "AG"
+  PCA_df$Group_combined[PCA_df$Group_analysis %in% c("O", "B")] <- "OB"
+  PCA_df$Group_combined[PCA_df$Group_analysis %in% c("E", "R")] <- "ER"
+
+  # Créer le graphique
+  p <- ggplot(PCA_df, aes(x = PC1, y = PC2, color = Group_combined)) +
+    geom_point(size = 2) +
+    theme_minimal() +
+    labs(
+      title = paste("ACP des éléments transposables", famille,"-", gsub("_PCA.eigenvec", "", file_name)),
+      x = x_lab,
+      y = y_lab
+    ) +
+    theme(
+      legend.position = "right",
+      plot.title = element_text(hjust = 0.5, face = "bold"),
+      plot.subtitle = element_text(hjust = 0.5, face = "bold")
+    )
+  
+  return(p)
+}
+
+### GYPSY
+eigenvec_files_gypsy <- c("ATHILA_PCA.eigenvec", "CRM_PCA.eigenvec", "REINA_PCA.eigenvec", "TAT_PCA.eigenvec", "TEKAY_PCA.eigenvec")
+
+for (file in eigenvec_files_gypsy) {
+  eigenvec_path <- paste0("~/M2/Cafeier/Codes/Tests_TEs/ACP/", file)
+  eigenval_path <- paste0("~/M2/Cafeier/Codes/Tests_TEs/ACP/", gsub(".eigenvec", ".eigenval.txt", file))
+  
+  plot_gypsy_acp <- plot_pca_with_variance(eigenvec_path, eigenval_path, file, correspondance,famille = "Gypsy")
+  
+  print(plot_gypsy_acp)
+
+  # Optionnel : sauvegarde
+   ggsave(paste0("~/M2/Cafeier/Codes/Tests_TEs/ACP/Plots/", gsub(".eigenvec", "PCA_plot.png", file)), plot = plot_gypsy_acp, bg="white")
+}
+
+## COPIA
+eigenvec_files_copia <- c("ALE_PCA.eigenvec", "SIRE_PCA.eigenvec",  "BIANCA_PCA.eigenvec", "TAR_PCA.eigenvec",  "IVANA_PCA.eigenvec")
+for (file in eigenvec_files_copia) {
+  eigenvec_path <- paste0("~/M2/Cafeier/Codes/Tests_TEs/ACP/", file)
+  eigenval_path <- paste0("~/M2/Cafeier/Codes/Tests_TEs/ACP/", gsub(".eigenvec", ".eigenval.txt", file))
+  
+  plot_copia_acp <- plot_pca_with_variance(eigenvec_path, eigenval_path, file, correspondance,famille = "Copia")
+  
+  print(plot_copia_acp)
+
+  # Optionnel : sauvegarde
+   ggsave(paste0("~/M2/Cafeier/Codes/Tests_TEs/ACP/Plots/", gsub(".eigenvec", "PCA_plot.png", file)), plot = plot_copia_acp, bg="white")
+}
+
+```
+
+```{r}
+# Liste des fichiers .eigenvec
+eigenvec_files_gypsy <- c("ATHILA_PCA.eigenvec", "CRM_PCA.eigenvec",  "REINA_PCA.eigenvec", "TAT_PCA.eigenvec",  "TEKAY_PCA.eigenvec")
+
+
+# Boucle sur chaque fichier .eigenvec
+for (file in eigenvec_files_gypsy) {
+  
+  # Charger le fichier .eigenvec
+  PCA_Gypsy <- read.table(paste0("~/M2/Cafeier/Codes/Tests_TEs/ACP/", file), header=FALSE, sep="")
+  
+  # Ajouter les noms de colonnes
+  colnames(PCA_Gypsy) <- c("FID", "IID", paste0("PC", 1:(ncol(PCA_Gypsy)-2)))
+  
+  # Joindre avec le fichier de correspondance
+  PCA_Gypsy <- left_join(PCA_Gypsy, correspondance, by = c("IID"="Bam"))
+  
+  # Filtrer selon les groupes
+  PCA_Gypsy <- subset(PCA_Gypsy, Group_analysis %in% c("A","G", "B", "C", "D" ,"E", "O", "R", "V"))
+  
+  # Créer une nouvelle variable de groupe dans le dataframe
+  PCA_Gypsy$Group_combined <- as.character(PCA_Gypsy$Group_analysis)
+  
+  # Regrouper les différentes catégories
+  PCA_Gypsy$Group_combined[PCA_Gypsy$Group_analysis %in% c("A", "G")] <- "AG"
+  PCA_Gypsy$Group_combined[PCA_Gypsy$Group_analysis %in% c("O", "B")] <- "OB"
+  PCA_Gypsy$Group_combined[PCA_Gypsy$Group_analysis %in% c("E", "R")] <- "ER"
+  
+  # Créer le plot pour chaque fichier
+print(ggplot(PCA_Gypsy, aes(x = PC1, y = PC2, label = IID, color = Group_combined)) +
+    geom_point(size = 2) +
+    # Optionnel : ajouter des étiquettes pour les identifiants
+    # geom_text(size = 2.5, vjust = -0.5) +
+    theme_minimal() +
+    labs(
+      title = paste("Analyse en Composantes Principales des éléments transposables Gypsy", gsub("_PCA.eigenvec", "", file)),
+      x = "PC1",
+      y = "PC2"
+    ) +
+    theme(
+      legend.position = "right",
+      plot.title = element_text(hjust = 0.5, face = "bold"),
+      plot.subtitle = element_text(hjust = 0.5, face = "bold")
+    ) #+
+     #ggsave(paste0("~/M2/Cafeier/Codes/Tests_TEs/ACP/Plots/", gsub(".eigenvec", "_PCA_plot.png", file))) # Sauvegarder le graphique)  
+)
+}
+
+```
+
+Et pour **Copia** \^\^
+
+```{r}
+# Liste des fichiers .eigenvec
+eigenvec_files_copia <- c("ALE_PCA.eigenvec", "SIRE_PCA.eigenvec",  "BIANCA_PCA.eigenvec", "TAR_PCA.eigenvec",  "IVANA_PCA.eigenvec")
+
+# Boucle sur chaque fichier .eigenvec
+for (file in eigenvec_files_copia) {
+  
+  # Charger le fichier .eigenvec
+  PCA_Copia <- read.table(paste0("~/M2/Cafeier/Codes/Tests_TEs/ACP/", file), header=FALSE, sep="")
+  
+  # Ajouter les noms de colonnes
+  colnames(PCA_Copia) <- c("FID", "IID", paste0("PC", 1:(ncol(PCA_Copia)-2)))
+  
+  # Joindre avec le fichier de correspondance
+  PCA_Copia <- left_join(PCA_Copia, correspondance, by = c("IID"="Bam"))
+  
+  # Filtrer selon les groupes
+  PCA_Copia <- subset(PCA_Copia, Group_analysis %in% c("A","G", "B", "C", "D" ,"E", "O", "R", "V"))
+  
+  # Créer une nouvelle variable de groupe dans le dataframe
+  PCA_Copia$Group_combined <- as.character(PCA_Copia$Group_analysis)
+  
+  # Regrouper les différentes catégories
+  PCA_Copia$Group_combined[PCA_Copia$Group_analysis %in% c("A", "G")] <- "AG"
+  PCA_Copia$Group_combined[PCA_Copia$Group_analysis %in% c("O", "B")] <- "OB"
+  PCA_Copia$Group_combined[PCA_Copia$Group_analysis %in% c("E", "R")] <- "ER"
+  
+  # Créer le plot pour chaque fichier
+print(ggplot(PCA_Copia, aes(x = PC1, y = PC2, label = IID, color = Group_combined)) +
+    geom_point(size = 2) +
+    # Optionnel : ajouter des étiquettes pour les identifiants
+    # geom_text(size = 2.5, vjust = -0.5) +
+    theme_minimal() +
+    labs(
+      title = paste("Analyse en Composantes Principales des éléments transposables Copia", gsub("_PCA.eigenvec", "", file)),
+      x = "PC1",
+      y = "PC2"
+    ) +
+    theme(
+      legend.position = "right",
+      plot.title = element_text(hjust = 0.5, face = "bold"),
+      plot.subtitle = element_text(hjust = 0.5, face = "bold")
+    ) # +
+    # ggsave(paste0("~/M2/Cafeier/Codes/Tests_TEs/ACP/", gsub(".eigenvec", "_PCA_plot.png", file))) # Sauvegarder le graphique)  
+)
+}
+```
+
+# Wilcoxon Tests : Test des rangs signées **de Wilcoxon**
+
+Le test de Wilcoxon est une alternative non paramétrique au test t pour comparer deux moyennes. C’est particulièrement recommandé dans une situation où les données ne sont pas normalement distribuées.
+
+Comme le test t, le test de Wilcoxon se présente sous deux formes : tests sur échantillon unique et sur deux échantillons.
+
+La taille de l’effet r est calculée comme étant la statistique Z divisée par la racine carrée de la taille de l’échantillon (N) (Z/sqrt(N)). La valeur Z est extraite soit de coin::wilcoxsign_test() (cas d’un test à un ou deux échantillons) ou coin::wilcox_test() (cas d’un test indépendant à deux échantillons).
+
+Notez que N correspond à la taille totale de l’échantillon pour le test d’échantillons indépendants et au nombre total de paires pour le test d’échantillons appariés. La valeur r varie de 0 à près de 1. Les valeurs d’interprétation de “r” couramment utilisées dans la littérature publiée sont : 0,10 - \< 0,3 (petit effet), 0,30 - \< 0,5 (effet modéré) et \>= 0,5 (effet important).
+
+## Fonction afin de tirer aléatoirement un nombre d'individu égal à l'effectif de la population la plus petite entre chaque comparaison deux à deux :
+
+La fonction **wilcox_balanced** (script ci-après) permet de sélectionner le plus petit effectif des deux groupes comparés et d'échantillonner aléatoirement sur la base de l'effectif du plus petit groupe le groupe le plus grand. Le test de Wilcoxon est ainsi effectué sur des échantillons équilibrés.
+
+la "Charge/Proportion" par famille TEs correspond au nombre de TEs sous forme hénérozygote plus deux fois le nombre de TEs sous forme homozygote le tout divisé par deux fois le nombre de fois où il y a une observation d'un TE de la famille en question chez un individus (correspoondant au nombre de positions (diploide) où il y a insertion de cette famille TEs au sein de l'espèce de Coffea canaphora).
+
+```{r}
+library(tidyverse)
+library(rstatix)
+# Test de Wilcoxon avec correction de Bonferroni et équilibrage des effectifs
+# Fonction pour effectuer un test avec échantillonnage équilibré
+wilcox_balanced <- function(data, group1, group2, variable = "Proportion") {
+  # Extraire les données pour chaque groupe
+  data1 <- data[data$Population_Group == group1, variable]
+  data2 <- data[data$Population_Group == group2, variable]
+  
+  # Déterminer la taille de l'échantillon (la plus petite des deux populations)
+  sample_size <- min(length(data1), length(data2))
+  
+  # Échantillonner aléatoirement dans le groupe le plus grand
+  if (length(data1) > sample_size) {
+    data1 <- sample(data1, sample_size, replace = FALSE)
+  }
+  if (length(data2) > sample_size) {
+    data2 <- sample(data2, sample_size, replace = FALSE)
+  }
+  
+  # Effectuer le test de Wilcoxon
+  test_result <- wilcox.test(data1, data2, paired = FALSE, exact = FALSE) # les deux grps sont independants
+  
+  return(list(
+    comparison = paste(group1, "vs", group2),
+    p_value = test_result$p.value,
+    sample_size = sample_size
+  ))
+}
+
+# Créer toutes les combinaisons possibles de Population_Group
+population_groups <- levels(recap_data_TEs$Population_Group)
+population_groups <- population_groups[population_groups != "Unknown"] # Enlever le groupe Unknown ne comportant plus d'individus
+combinations <- combn(population_groups, 2, simplify = FALSE)
+
+# Initialiser les listes pour stocker les résultats
+results <- list()
+p_values <- numeric()
+sample_sizes <- numeric()
+
+# Effectuer le test de Wilcoxon pour chaque paire avec effectifs équilibrés
+# set.seed(123) # Pour la reproductibilité
+
+for (i in seq_along(combinations)) {
+  group1 <- combinations[[i]][1]
+  group2 <- combinations[[i]][2]
+  
+  test_result <- wilcox_balanced(recap_data_TEs, group1, group2) # ma fonction précédente
+  
+  results[[i]] <- test_result
+  p_values[i] <- test_result$p_value
+  sample_sizes[i] <- test_result$sample_size
+}
+
+# Appliquer la correction de Bonferroni
+adjusted_p_values <- p.adjust(p_values, method = "bonferroni")
+
+# Créer un dataframe des résultats
+result_df <- data.frame(
+  Comparison = sapply(results, function(x) x$comparison),
+  Sample_Size = sample_sizes,
+  P_Value = p_values,
+  Adjusted_P_Value = adjusted_p_values,
+  Significant = adjusted_p_values < 0.05
+)
+
+# Afficher les résultats
+print(result_df)
+```
+
+#### Par Superfamilles et Familles TEs
+
+Je fais une fonction me permettant d'appliquer le test de wilcoxon avec correction de bonferroni sur mes données par famille TEs
+
+```{r}
+library(tidyverse)
+library(rstatix)
+
+# Fonction améliorée
+wilcox_balanced_adaptable <- function(data, variable) {
+  
+  # Liste pour stocker tous les résultats
+  results_list <- list()
+  
+  # Liste des superfamilles
+  superfamilies <- unique(data$Superfamily)
+  
+  for (superfamily in superfamilies) {
+    
+    # Filtrer par superfamille
+    data_superfamily <- data %>% filter(Superfamily == superfamily)
+    
+    # Liste des familles dans cette superfamille
+    families <- unique(data_superfamily$Family)
+    
+    # Stockage des résultats par superfamille
+    results_superfamily <- list()
+    
+    for (family in families) {
+      
+      # Filtrer par famille
+      data_family <- data_superfamily %>% filter(Family == family)
+      
+      # Supprimer la population "Unknown"
+      data_family <- data_family %>% filter(Population_Group != "Unknown")
+      
+      # Extraire les groupes de population
+      population_groups <- unique(data_family$Population_Group)
+      
+      # Générer toutes les combinaisons possibles de comparaisons entre populations
+      combinations <- combn(population_groups, 2, simplify = FALSE)
+      
+      # Liste pour stocker les résultats des comparaisons
+      results_family <- list()
+      
+      for (comb in combinations) {
+        group1 <- comb[1]
+        group2 <- comb[2]
+        
+        # Extraire les données pour chaque groupe
+        data1 <- data_family %>% filter(Population_Group == group1) %>% pull({{ variable }})
+        data2 <- data_family %>% filter(Population_Group == group2) %>% pull({{ variable }})
+        
+        # Déterminer la taille de l'échantillon (la plus petite des deux populations)
+        sample_size <- min(length(data1), length(data2))
+        
+        # Échantillonner aléatoirement pour équilibrer les tailles
+        if (length(data1) > sample_size) {
+          data1 <- sample(data1, sample_size, replace = FALSE)
+        }
+        if (length(data2) > sample_size) {
+          data2 <- sample(data2, sample_size, replace = FALSE)
+        }
+        
+        # Effectuer le test de Wilcoxon
+        test_result <- wilcox.test(data1, data2, paired = FALSE, exact = FALSE)
+        
+        # Ajouter le test à la liste des résultats
+        results_family[[paste(group1, "vs", group2)]] <- list(
+          comparison = paste(group1, "vs", group2),
+          p_value = test_result$p.value,
+          sample_size = sample_size
+        )
+      }
+      
+      # Stocker les résultats de la famille
+      results_superfamily[[family]] <- results_family
+    }
+    
+    # Ajouter la superfamille aux résultats finaux
+    results_list[[superfamily]] <- results_superfamily
+  }
+  
+  # Convertir les résultats en un dataframe pour plus de clarté
+  result_table <- tibble(
+    Superfamily = character(),
+    Family = character(),
+    Comparison = character(),
+    P_Value = numeric(),
+    Adjusted_P_Value = numeric(),
+    Sample_Size = numeric()
+  )
+  
+  # Parcourir les résultats pour construire un tableau propre
+  for (superfamily in names(results_list)) {
+    superfamily_results <- results_list[[superfamily]]
+    
+    for (family in names(superfamily_results)) {
+      family_results <- superfamily_results[[family]]
+      
+      # Extraire les p-values pour cette famille
+      p_values <- sapply(family_results, function(x) x$p_value)
+      
+      # Appliquer la correction de Bonferroni
+      adjusted_p_values <- p.adjust(p_values, method = "bonferroni")
+      
+      # Ajouter les résultats au tableau
+      for (i in seq_along(family_results)) {
+        comparison_name <- names(family_results)[i]
+        result <- family_results[[comparison_name]]
+        
+        result_table <- bind_rows(result_table, tibble(
+          Superfamily = superfamily,
+          Family = family,
+          Comparison = comparison_name,
+          P_Value = result$p_value,
+          Adjusted_P_Value = adjusted_p_values[i],
+          Sample_Size = result$sample_size
+        ))
+      }
+    }
+  }
+  
+  # Trier et ajouter les niveaux de significativité
+  result_table <- result_table %>%
+    arrange(Superfamily, Family, P_Value) %>%
+    mutate(
+      Significant = Adjusted_P_Value < 0.05,
+      Significance = case_when(
+        Adjusted_P_Value < 0.0001 ~ "****",
+        Adjusted_P_Value < 0.001 ~ "***",
+        Adjusted_P_Value < 0.01 ~ "**",
+        Adjusted_P_Value < 0.05 ~ "*",
+        TRUE ~ ""
+      )
+    )
+  
+  return(result_table)
+}
+```
+
+```{r}
+# Compte TEs (Count) : Charge Hetero+2*Homo
+resultats_wilcoxon_Count_byFam <- wilcox_balanced_adaptable(recap_data_TEs, "Count")
+print(resultats_wilcoxon_Count_byFam)
+# Enregistrer le tableau
+write.table(resultats_wilcoxon_Count_byFam, "~/M2/Cafeier/Codes/Matrice_indv/wilcoxon_tests_Count_byFamilyTEs_btwPops.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+## Proportions TEs
+resultats_wilcoxon_proportion_byFam <- wilcox_balanced_adaptable(recap_data_TEs, "Proportion")
+print(resultats_wilcoxon_proportion_byFam)
+# Enregistrer le tableau
+write.table(resultats_wilcoxon_proportion_byFam, "~/M2/Cafeier/Codes/Matrice_indv/wilcoxon_tests_Proportions_byFamilyTEs_btwPops.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Compte TEs sous forme heterozygote (Count_hetero) : Charge Hetero
+resultats_wilcoxon_Count_hetero_byFam <- wilcox_balanced_adaptable(recap_data_TEs, "Count_hetero")
+print(resultats_wilcoxon_Count_hetero_byFam)
+# Enregistrer le tableau
+write.table(resultats_wilcoxon_Count_hetero_byFam, "~/M2/Cafeier/Codes/Matrice_indv/wilcoxon_tests_Count_hetero_byFamilyTEs_btwPops.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+## Proportions heterozygotie TEs
+resultats_wilcoxon_proportion_hetero_byFam <- wilcox_balanced_adaptable(recap_data_TEs, "Proportion_hetero")
+print(resultats_wilcoxon_proportion_hetero_byFam)
+# Enregistrer le tableau
+write.table(resultats_wilcoxon_proportion_hetero_byFam, "~/M2/Cafeier/Codes/Matrice_indv/wilcoxon_tests_Proportions_hetero_byFamilyTEs_btwPops.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Compte TEs sous forme homozygote (Count_homo) : Charge Homo
+resultats_wilcoxon_Count_homo_byFam <- wilcox_balanced_adaptable(recap_data_TEs, "Count_homo")
+print(resultats_wilcoxon_Count_homo_byFam)
+# Enregistrer le tableau
+write.table(resultats_wilcoxon_Count_homo_byFam, "~/M2/Cafeier/Codes/Matrice_indv/wilcoxon_tests_Count_homo_byFamilyTEs_btwPops.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+## Proportions homozygotie TEs
+resultats_wilcoxon_proportion_homo_byFam <- wilcox_balanced_adaptable(recap_data_TEs, "Proportion_homo")
+print(resultats_wilcoxon_proportion_homo_byFam)
+# Enregistrer le tableau
+write.table(resultats_wilcoxon_proportion_homo_byFam, "~/M2/Cafeier/Codes/Matrice_indv/wilcoxon_tests_Proportions_homo_byFamilyTEs_btwPops.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+## Proportions ratio nb heterozygotes/nb homozygotes TEs
+resultats_wilcoxon_ratio_byFam <- wilcox_balanced_adaptable(recap_data_TEs, "Ratio")
+print(resultats_wilcoxon_ratio_byFam)
+# Enregistrer le tableau
+write.table(resultats_wilcoxon_ratio_byFam, "~/M2/Cafeier/Codes/Matrice_indv/wilcoxon_tests_ratio_byFamilyTEs_btwPops.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+```
+
+### Fonction Wilcoxon test+ Bonferroni correction adaptée par chromosome :
+
+Filtrer par Superfamille (Gypsy et Copia).
+
+Filtrer par Chromosome.
+
+Filtrer par Famille TE.
+
+Comparer les populations deux à deux.
+
+Effectuer un test de Wilcoxon pour chaque comparaison entre les populations dans chaque famille TE pour chaque chromosome et chaque superfamille.
+
+Appliquer la correction de Bonferroni pour ajuster les p-values.
+
+```{r}
+library(tidyverse)
+library(rstatix)
+
+# Fonction améliorée avec ajout du chromosome
+wilcox_balanced_adaptable_chr <- function(data, variable) {
+  
+  # Liste pour stocker tous les résultats
+  results_list <- list()
+  
+  # Liste des chromosomes dans cette superfamille
+    chromosomes <- unique(data$Chromosome)
+  
+    for (chromosome in chromosomes) {
+    
+    # Filtrer par chromosome
+      data_chromosome <- data %>% filter(Chromosome == chromosome)
+    
+    
+    
+
+    # Liste des superfamilles
+      superfamilies <- unique(data$Superfamily)
+    
+    # Stockage des résultats par chromosome
+      results_chromosome <- list()
+    
+    
+      for (superfamily in superfamilies) {
+      
+      # Filtrer par superfamille ds chr
+       data_superfamily <- data_chromosome %>% filter(Superfamily == superfamily)
+    
+    # Liste des familles dans cette superfamille
+       families <- unique(data_superfamily$Family)
+    
+      # Stockage des résultats par superfamille et chromosome
+       results_superfamily <- list()
+      
+      
+      for (family in families) {
+        
+        # Filtrer par famille
+        data_family <- data_chromosome %>% filter(Family == family)
+        
+        # Supprimer la population "Unknown"
+        data_family <- data_family %>% filter(Population_Group != "Unknown")
+        
+        # Extraire les groupes de population
+        population_groups <- unique(data_family$Population_Group)
+        
+        # Générer toutes les combinaisons possibles de comparaisons entre populations
+        combinations <- combn(population_groups, 2, simplify = FALSE)
+        
+        # Liste pour stocker les résultats des comparaisons
+        results_family <- list()
+        
+        for (comb in combinations) {
+          group1 <- comb[1]
+          group2 <- comb[2]
+          
+          # Extraire les données pour chaque groupe
+          data1 <- data_family %>% filter(Population_Group == group1) %>% pull({{ variable }})
+          data2 <- data_family %>% filter(Population_Group == group2) %>% pull({{ variable }})
+          
+          # Déterminer la taille de l'échantillon (la plus petite des deux populations)
+          sample_size <- min(length(data1), length(data2))
+          
+          # Échantillonner aléatoirement pour équilibrer les tailles
+          if (length(data1) > sample_size) {
+            data1 <- sample(data1, sample_size, replace = FALSE)
+          }
+          if (length(data2) > sample_size) {
+            data2 <- sample(data2, sample_size, replace = FALSE)
+          }
+          
+          # Effectuer le test de Wilcoxon
+          test_result <- wilcox.test(data1, data2, paired = FALSE, exact = FALSE)
+          
+          # Ajouter le test à la liste des résultats
+          results_family[[paste(group1, "vs", group2)]] <- list(
+            comparison = paste(group1, "vs", group2),
+            p_value = test_result$p.value,
+            sample_size = sample_size,
+            chromosome = chromosome
+          )
+        }
+        
+        # Stocker les résultats de la famille
+        results_superfamily[[family]] <- results_family
+      }
+      
+      # Ajouter les résultats du chromosome à la superfamille
+      results_chromosome[[superfamily]] <- results_superfamily
+    }
+    
+    # Ajouter la superfamille aux résultats finaux
+    results_list[[chromosome]] <- results_chromosome
+  }
+  
+  # Convertir les résultats en un dataframe
+  result_table <- tibble(
+    Chromosome = character(),
+    Superfamily = character(),
+    Family = character(),
+    Comparison = character(),
+    P_Value = numeric(),
+    Adjusted_P_Value = numeric(),
+    Sample_Size = numeric()
+  )
+  
+  # tableau propre
+  for (chromosome in names(results_list)) {
+    chromosome_results <- results_list[[chromosome]]
+    
+    for (superfamily in names(chromosome_results)) {
+      superfamily_results <- chromosome_results[[superfamily]]
+      
+      for (family in names(superfamily_results)) {
+        family_results <- superfamily_results[[family]]
+        
+        # Extraire les p-values pour cette famille
+        p_values <- sapply(family_results, function(x) x$p_value)
+        
+        # Appliquer la correction de Bonferroni
+        adjusted_p_values <- p.adjust(p_values, method = "bonferroni")
+        
+        # Ajouter les résultats au tableau
+        for (i in seq_along(family_results)) {
+          comparison_name <- names(family_results)[i]
+          result <- family_results[[comparison_name]]
+          
+          result_table <- bind_rows(result_table, tibble(
+            Chromosome = result$chromosome,
+            Superfamily = superfamily,
+            Family = family,
+            Comparison = comparison_name,
+            P_Value = result$p_value,
+            Adjusted_P_Value = adjusted_p_values[i],
+            Sample_Size = result$sample_size
+          ))
+        }
+      }
+    }
+  }
+  
+  # Trier et ajouter les niveaux de significativité
+  result_table <- result_table %>%
+    arrange(Superfamily, Chromosome, Family, P_Value) %>%
+    mutate(
+      Significant = Adjusted_P_Value < 0.05,
+      Significance = case_when(
+        Adjusted_P_Value < 0.0001 ~ "****",
+        Adjusted_P_Value < 0.001 ~ "***",
+        Adjusted_P_Value < 0.01 ~ "**",
+        Adjusted_P_Value < 0.05 ~ "*",
+        TRUE ~ ""
+      )
+    )
+  
+  return(result_table)
+}
+
+```
+
+je l'applique
+
+```{r}
+# Count / Charge TEs
+resultats_wilcoxon_Count_byFam_chr <- wilcox_balanced_adaptable_chr(recap_data_TEs_chr, "Count")
+print(resultats_wilcoxon_Count_byFam_chr)
+# Enregistrer le tableau
+write.table(resultats_wilcoxon_Count_byFam_chr, "~/M2/Cafeier/Codes/Matrice_indv/wilcoxon_tests_Count_byFamilyTEs_btwPops_chr.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Count heterozygotes TEs
+resultats_wilcoxon_Count_hetero_byFam_chr <- wilcox_balanced_adaptable_chr(recap_data_TEs_chr, "Count_hetero")
+print(resultats_wilcoxon_Count_hetero_byFam_chr)
+# Enregistrer le tableau
+write.table(resultats_wilcoxon_Count_hetero_byFam_chr, "~/M2/Cafeier/Codes/Matrice_indv/wilcoxon_tests_Count_hetero_byFamilyTEs_btwPops_chr.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Count homozygotes TEs
+resultats_wilcoxon_Count_homo_byFam_chr <- wilcox_balanced_adaptable_chr(recap_data_TEs_chr, "Count_homo")
+print(resultats_wilcoxon_Count_homo_byFam_chr)
+# Enregistrer le tableau
+write.table(resultats_wilcoxon_Count_homo_byFam_chr, "~/M2/Cafeier/Codes/Matrice_indv/wilcoxon_tests_Count_homo_byFamilyTEs_btwPops_chr.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Ratio
+resultats_wilcoxon_ratio_byFam_chr <- wilcox_balanced_adaptable_chr(recap_data_TEs_chr, "Ratio")
+print(resultats_wilcoxon_ratio_byFam_chr)
+# Enregistrer le tableau
+write.table(resultats_wilcoxon_ratio_byFam_chr, "~/M2/Cafeier/Codes/Matrice_indv/wilcoxon_tests_ratio_byFamilyTEs_btwPops_chr.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+```
+
+### Représentation graphique Charge TEs/Familles
+
+```{r}
+library(ggplot2)
+library(gridExtra)
+# Créer un graphique pour les familles de Gypsy
+Spectre_indv_gypsy_charge_byFam <- ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Gypsy",], 
+       aes(x = Individual, y = Count, fill = Family)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") + 
+  #ylim(0, 1) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) +
+  labs(
+    title = "Charge des familles Gypsy par individu et population de Caféiers robusta",
+    x = "Individus par population",
+    y = "Charge TEs",
+    fill = "Famille Gypsy"
+  ) +
+  scale_fill_viridis_d(option = "plasma")  # Palette de couleurs pour différencier les familles
+
+# Créer un graphique pour les familles de Copia
+Spectre_indv_copia_charge_byFam <- ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Copia",], 
+       aes(x = Individual, y = Count, fill = Family)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+ #ylim(0, 1) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) +
+  labs(
+    title = "Charge des familles Copia par individu et population de Caféiers robusta",
+    x = "Individus par population",
+    y = "Charge TEs",
+    fill = "Famille Copia"
+  ) +
+  scale_fill_viridis_d(option = "viridis")  # Palette de couleurs différente pour Copia
+
+Spectre_indv_copia_charge_byFam
+Spectre_indv_gypsy_charge_byFam
+grid.arrange(Spectre_indv_gypsy_charge_byFam, Spectre_indv_copia_charge_byFam, ncol = 1)
+```
+
+```{r}
+library(ggplot2)
+library(gridExtra)
+
+# Définir 1 ordre des Groupes génétiues
+recap_data_TEs$Population_Group <- factor(recap_data_TEs$Population_Group,
+                                          levels = c("D", "C", "AG", "ER", "hb", "OB", "V"))
+
+# Pour Gypsy
+plot_gypsy_charge <- ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Gypsy",], aes(x = Population_Group, y = Count, fill = Population_Group)) +
+  geom_boxplot() +
+  #geom_hline(yintercept = 1, linetype = "solid", color = "red", linewidth = 0.3) +
+  facet_wrap(~Family, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Gypsy - Distribution des charges par famille TEs",
+    x = "Groupe génétique",
+    y = "Charge TEs",
+    fill = "Groupe génétique"
+  ) +
+  scale_fill_viridis_d(option = "plasma")
+
+# Pour Copia
+plot_copia_charge <- ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Copia",], aes(x = Population_Group, y = Count, fill = Population_Group)) +
+  geom_boxplot() +
+  #geom_hline(yintercept = 1, linetype = "solid", color = "red", linewidth = 0.3) +
+  facet_wrap(~Family, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Copia - Distribution des charges par famille TEs",
+    x = "Groupe génétique",
+    y = "Charge TEs",
+    fill = "Groupe génétique"
+  ) +
+  scale_fill_viridis_d(option = "viridis")
+
+# Afficher les graphiques
+grid.arrange(plot_gypsy_charge, plot_copia_charge, ncol = 1)
+plot_gypsy_charge
+plot_copia_charge
+
+# Sauver le graphique Gypsy
+svg("~/M2/Cafeier/Codes/Figures/plot_gypsy_charge.svg", width = 10, height = 7)
+print(plot_gypsy_charge)
+dev.off()
+
+# Sauver le graphique Copia
+svg("~/M2/Cafeier/Codes/Figures/plot_copia_charge.svg", width = 10, height = 7)
+print(plot_copia_charge)
+dev.off()
+
+```
+
+#### Essai plot avec significativité wilcoxon test entre pops
+
+```{r}
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+
+# Préparation des données de significativité pour l'affichage
+# Créer un dataframe pour les annotations de significativité par famille et par comparaison
+prepare_significance_data <- function(result_table, superfamily_name) {
+  sig_data <- result_table %>%
+    filter(Superfamily == superfamily_name, Significant == TRUE) %>%
+    select(Family, Comparison, Significance)
+  
+  # Créer des nouvelles colonnes pour les groupes de population comparés
+  sig_data <- sig_data %>%
+    mutate(
+      Group1 = sapply(strsplit(Comparison, " vs "), function(x) x[1]),
+      Group2 = sapply(strsplit(Comparison, " vs "), function(x) x[2])
+    )
+  
+  return(sig_data)
+}
+
+# Préparer les données de significativité
+gypsy_sig <- prepare_significance_data(result_table, "Gypsy")
+copia_sig <- prepare_significance_data(result_table, "Copia")
+
+# Pour Gypsy avec annotations de significativité
+plot_gypsy_charge <- ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Gypsy",], 
+                            aes(x = Population_Group, y = Proportion, fill = Population_Group)) +
+  geom_boxplot() +
+  facet_wrap(~Family, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.position = "right"
+  ) +
+  labs(
+    title = "Gypsy - Distribution des charges par famille TEs",
+    x = "Groupe de Population",
+    y = "Charge TEs",
+    fill = "Groupe de Population"
+  ) +
+  scale_fill_viridis_d(option = "plasma")
+
+# Ajouter des annotations de significativité pour Gypsy
+  # Calculer les valeurs y max pour chaque famille
+  y_max_by_family <- recap_data_TEs %>%
+    filter(Superfamily == "Gypsy") %>%
+    group_by(Family) %>%
+    summarize(y_max = max(Proportion, na.rm = TRUE) * 1.1) # placer un peu au dessus de la hauteur max du box
+  
+  # Fusionner avec les données de significativité
+  gypsy_sig <- merge(gypsy_sig, y_max_by_family, by = "Family")
+  
+  # Ajouter le texte de significativité
+  plot_gypsy_charge <- plot_gypsy_charge +
+    geom_text(data = gypsy_sig,
+              aes(x = Group1, y = y_max, label = Significance),
+              position = position_nudge(x = 0.3), 
+              size = 4, fontface = "bold") +
+    geom_segment(data = gypsy_sig,
+                aes(x = Group1, xend = Group2, y = y_max * 0.95, yend = y_max * 0.95),
+                size = 0.5)
+
+# Pour Copia avec annotations de significativité
+plot_copia_charge <- ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Copia",], 
+                            aes(x = Population_Group, y = Proportion, fill = Population_Group)) +
+  geom_boxplot() +
+  facet_wrap(~Family, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.position = "right"
+  ) +
+  labs(
+    title = "Copia - Distribution des charges par famille TEs",
+    x = "Groupe de Population",
+    y = "Charge TEs",
+    fill = "Groupe de Population"
+  ) +
+  scale_fill_viridis_d(option = "viridis")
+
+# Ajouter des annotations de significativité pour Copia
+  # Calculer les valeurs y max pour chaque famille
+  y_max_by_family <- recap_data_TEs %>%
+    filter(Superfamily == "Copia") %>%
+    group_by(Family) %>%
+    summarize(y_max = max(Proportion, na.rm = TRUE) * 1.1)
+  
+  # Fusionner avec les données de significativité
+  copia_sig <- merge(copia_sig, y_max_by_family, by = "Family")
+  
+  # Ajouter le texte de significativité
+  plot_copia_charge <- plot_copia_charge +
+    geom_text(data = copia_sig,
+              aes(x = Group1, y = y_max, label = Significance),
+              position = position_nudge(x = 0.3),
+              size = 4, fontface = "bold") +
+    geom_segment(data = copia_sig,
+                aes(x = Group1, xend = Group2, y = y_max * 0.95, yend = y_max * 0.95),
+                size = 0.5)
+
+# Afficher les graphiques
+grid.arrange(plot_gypsy_charge, plot_copia_charge, ncol = 1)
+```
+
+##### Autre test avec fonction
+
+```{r}
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+
+# Créer une fonction pour préparer les données et ajouter des annotations de significativité
+add_significance_annotations <- function(plot, test_results, superfamily_name) {
+  # Filtrer les résultats significatifs pour la superfamille spécifiée
+  sig_results <- test_results %>%
+    filter(Superfamily == superfamily_name, Significant == TRUE)
+
+# Pour chaque famille et comparaison significative
+    for(i in 1:nrow(sig_results)) {
+      family <- sig_results$Family[i]
+      comparison <- sig_results$Comparison[i]
+      sig_symbol <- sig_results$Significance[i]
+      
+      # Extraire les groupes de population comparés
+      groups <- strsplit(comparison, " vs ")[[1]]
+      group1 <- groups[1]
+      group2 <- groups[2]
+      
+      # Calculer la valeur y maximale pour cette famille
+      family_data <- recap_data_TEs %>%
+        filter(Superfamily == superfamily_name, Family == family)
+      y_max <- max(family_data$Proportion) * 1.1
+      
+      # Créer un dataframe pour l'annotation
+      annotation_data <- data.frame(
+        Family = family,
+        x = group1,
+        xend = group2,
+        y = y_max,
+        label = sig_symbol
+      )
+      
+      # Ajouter l'annotation au graphique mentionné dans la fonction lors de son utilisation
+      plot <- plot + 
+        geom_text(data = annotation_data,
+                 aes(x = x, y = y, label = label),
+                 inherit.aes = FALSE,
+                 fontface = "bold",
+                 size = 4) +
+        geom_segment(data = annotation_data,
+                    aes(x = x, xend = xend, y = y * 0.95, yend = y * 0.95),
+                    inherit.aes = FALSE,
+                    size = 0.5)
+    }
+  
+  return(plot)
+}
+
+# Graphique pour Gypsy
+plot_gypsy_charge <- ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Gypsy",], 
+                           aes(x = Population_Group, y = Proportion, fill = Population_Group)) +
+  geom_boxplot() +
+  facet_wrap(~Family, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Gypsy - Distribution des charges par famille TEs",
+    x = "Groupe de Population",
+    y = "Charge TEs",
+    fill = "Groupe de Population"
+  ) +
+  scale_fill_viridis_d(option = "plasma")
+
+# Graphique pour Copia
+plot_copia_charge <- ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Copia",], 
+                           aes(x = Population_Group, y = Proportion, fill = Population_Group)) +
+  geom_boxplot() +
+  facet_wrap(~Family, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Copia - Distribution des charges par famille TEs",
+    x = "Groupe de Population",
+    y = "Charge TEs",
+    fill = "Groupe de Population"
+  ) +
+  scale_fill_viridis_d(option = "viridis")
+
+# Ajouter les annotations de significativité
+plot_gypsy_charge_annot <- add_significance_annotations(plot_gypsy_charge, result_table, "Gypsy")
+plot_copia_charge_annot <- add_significance_annotations(plot_copia_charge, result_table, "Copia")
+
+# Afficher les graphiques
+grid.arrange(plot_gypsy_charge_annot, plot_copia_charge_annot, ncol = 1)
+plot_gypsy_charge_annot
+plot_copia_charge_annot
+```
+
+### Représentation graphique de la Proportion d'hétérozygotie TEs/Familles
+
+```{r}
+# Créer un graphique pour les familles de Gypsy
+Spectre_indv_hetero_gypsy_byFam <- ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Gypsy",], 
+       aes(x = Individual, y = Count_hetero, fill = Family)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  # ylim(0, 1) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    plot.subtitle = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) +
+  labs(
+    title = "Nombre de TEs sous forme hétérozygote des familles Gypsy",
+    
+    subtitle = "par individu et population de Caféiers robusta",
+    x = "Individus par population",
+    y = "Nombre de TEs sous forme hétérozygote",
+    fill = "Famille Gypsy"
+  ) +
+  scale_fill_viridis_d(option = "plasma")  # Palette de couleurs pour différencier les familles
+
+# Créer un graphique pour les familles de Copia
+Spectre_indv_hetero_copia_byFam <- ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Copia",], 
+       aes(x = Individual, y = Count_hetero, fill = Family)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  # ylim(0, 1) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    plot.subtitle = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) +
+  labs(
+    title = "Nombre de TEs sous forme hétérozygote des familles Copia",
+    subtitle = "par individu et population de Caféiers robusta",
+    x = "Individus par population",
+    y = "Nombre de TEs sous forme hétérozygote",
+    fill = "Famille Copia"
+  ) +
+  scale_fill_viridis_d(option = "viridis")  # Palette de couleurs différente pour Copia
+
+# Afficher les graphiques
+grid.arrange(Spectre_indv_hetero_gypsy_byFam, Spectre_indv_hetero_copia_byFam, ncol = 1)
+Spectre_indv_hetero_gypsy_byFam
+Spectre_indv_hetero_copia_byFam
+```
+
+```{r}
+library(ggplot2)
+library(gridExtra)
+
+# Pour Gypsy
+plot_gypsy_Proportion_hetero <- ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Gypsy",], aes(x = Population_Group, y = Count_hetero, fill = Population_Group)) +
+  geom_boxplot() +
+  #geom_hline(yintercept = 1, linetype = "solid", color = "red", linewidth = 0.3) +
+  facet_wrap(~Family, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Gypsy - Distribution des comptes de TEs hétérozygotes par famille TEs",
+    x = "Groupe de Population",
+    y = "Nombre TEs hétérozygotes",
+    fill = "Groupe de Population"
+  ) +
+  scale_fill_viridis_d(option = "plasma")
+
+# Pour Copia
+plot_copia_Proportion_hetero <- ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Copia",], aes(x = Population_Group, y = Count_hetero, fill = Population_Group)) +
+  geom_boxplot() +
+  #geom_hline(yintercept = 1, linetype = "solid", color = "red", linewidth = 0.3) +
+  facet_wrap(~Family, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Copia - Distribution des comptes de TEs hétérozygotes par famille TEs",
+    x = "Groupe de Population",
+    y = "Nombre TEs hétérozygotes",
+    fill = "Groupe de Population"
+  ) +
+  scale_fill_viridis_d(option = "viridis")
+
+# Afficher les graphiques
+grid.arrange(plot_gypsy_Proportion_hetero, plot_copia_Proportion_hetero, ncol = 1)
+plot_gypsy_Proportion_hetero
+plot_copia_Proportion_hetero
+```
+
+### Représentation graphique de la Proportion d'homozygotie TEs/Familles
+
+```{r}
+# Créer un graphique pour les familles de Gypsy
+Spectre_indv_homo_gypsy_byFam <- ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Gypsy",], 
+       aes(x = Individual, y = Count_homo, fill = Family)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") + 
+  # ylim(0, 1) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    plot.subtitle = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) +
+  labs(
+    title = "Nombre de TEs sous forme homozygote des familles Gypsy",
+    subtitle = "par individu et population de Caféiers robusta",
+    x = "Individus par population",
+    y = "Nombre de TEs sous forme homozygote",
+    fill = "Famille Gypsy"
+  ) +
+  scale_fill_viridis_d(option = "plasma")  # Palette de couleurs pour différencier les familles
+
+# Créer un graphique pour les familles de Copia
+Spectre_indv_homo_copia_byFam <- ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Copia",], 
+       aes(x = Individual, y = Count_homo, fill = Family)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") + 
+ # ylim(0, 1) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    plot.subtitle = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) +
+  labs(
+    title = "Nombre de TEs sous forme homozygote des familles Copia",
+    subtitle = "par individu et population de Caféiers robusta",
+    x = "Individus par population",
+    y = "Nombre de TEs sous forme homozygote",
+    fill = "Famille Copia"
+  ) +
+  scale_fill_viridis_d(option = "viridis")  # Palette de couleurs différente pour Copia
+
+# Afficher les graphiques
+grid.arrange(Spectre_indv_homo_gypsy_byFam, Spectre_indv_homo_copia_byFam, ncol = 1)
+Spectre_indv_homo_gypsy_byFam
+Spectre_indv_homo_copia_byFam
+```
+
+```{r}
+library(ggplot2)
+library(gridExtra)
+
+# Pour Gypsy
+plot_gypsy_Proportion_homo <- ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Gypsy",], aes(x = Population_Group, y = Count_homo, fill = Population_Group)) +
+  geom_boxplot() +
+  #geom_hline(yintercept = 1, linetype = "solid", color = "red", linewidth = 0.3) +
+  facet_wrap(~Family, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Gypsy - Distribution des comptes de TEs homozygotes par famille TEs",
+    x = "Groupe de Population",
+    y = "Nombre TEs homozygotes",
+    fill = "Groupe de Population"
+  ) +
+  scale_fill_viridis_d(option = "plasma")
+
+# Pour Copia
+plot_copia_Proportion_homo <- ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Copia",], aes(x = Population_Group, y = Count_homo, fill = Population_Group)) +
+  geom_boxplot() +
+  #geom_hline(yintercept = 1, linetype = "solid", color = "red", linewidth = 0.3) +
+  facet_wrap(~Family, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Copia - Distribution des comptes de TEs homozygotes par famille TEs",
+    x = "Groupe de Population",
+    y = "Nombre TEs homozygotes",
+    fill = "Groupe de Population"
+  ) +
+  scale_fill_viridis_d(option = "viridis")
+
+# Afficher les graphiques
+grid.arrange(plot_gypsy_Proportion_homo, plot_copia_Proportion_homo, ncol = 1)
+plot_gypsy_Proportion_homo
+plot_copia_Proportion_homo
+```
+
+### Représentation graphique du Ratio de l'hétérozygotie/l'homozygotie TEs par familles TEs
+
+```{r}
+# Créer un graphique pour les familles de Gypsy
+ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Gypsy",], 
+       aes(x = Individual, y = Ratio, fill = Family)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) +
+  labs(
+    title = "Ratio des TEs hétérozygotes / homozygotes des familles Gypsy par individu et population de Caféiers robusta",
+    x = "Individus par population",
+    y = "Ratio des TEs hétérozygotes / homozygotes",
+    fill = "Famille Gypsy"
+  ) +
+  scale_fill_viridis_d(option = "plasma")  # Palette de couleurs pour différencier les familles
+
+# Créer un graphique pour les familles de Copia
+ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Copia",], 
+       aes(x = Individual, y = Ratio, fill = Family)) +
+  geom_bar(stat = "identity", color = "#546E7A", size = 0.1) +
+  facet_grid(~ Population_Group, scales = "free_x", space = "free_x") +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10, face = "bold"),
+    panel.spacing = unit(0.2, "lines"),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12),
+    legend.title = element_text(size = 8, face = "bold"),
+    legend.text = element_text(size = 7),
+    axis.title = element_text(size = 10, face = "bold"),
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank()
+  ) +
+  labs(
+    title = "Ratio des TEs hétérozygotes / homozygotes des familles Copia par individu et population de Caféiers robusta",
+    x = "Individus par population",
+    y = "Ratio des TEs hétérozygotes / homozygotes",
+    fill = "Famille Copia"
+  ) +
+  scale_fill_viridis_d(option = "viridis")  # Palette de couleurs différente pour Copia
+```
+
+IDEM avec un ratio des proportions hétérozygotes/ proportions homozygotes
+
+Bon ici à ne pas garder mais nous fait remarquer qu'il y a très peu d'IVAna copia
+
+#### Boxplots avec test binomial entre hétérozygotes & homozygotes
+
+un **test binomial** (`binom.test()`) pour chaque famille afin de comparer le nombre d'hétérozygotes et d'homozygotes.
+
+Hypothèse nulle (H0​) : le nombre d'hétérozygotes est **égal** au nombre d'homozygotes (proportion = 0.5).
+
+Hypothèse alternative (H1​) : il y a **plus d'hétérozygotes** qu'attendu sous H0​.
+
+**Test unilatéral** (alternative = "greater") pour vérifier si les hétérozygotes sont **significativement plus nombreux** que les homozygotes.
+
+Le test du chi² est souvent utilisé pour tester l’indépendance entre deux variables dans des tableaux de contingence. Mais ici, nous testons si une proportion diffère d'une valeur fixe (0.5). Si nos effectifs sont petits, le test binomial est plus fiable car il est exact (contrairement au chi² qui est approximatif).
+
+```{r}
+# Créer une liste pour stocker les résultats des tests
+test_results <- list()
+
+# Boucle sur chaque combinaison unique de Family et Population_Group
+for (fam in unique(recap_data_TEs$Family)) {
+  for (pop in unique(recap_data_TEs$Population_Group)) {
+    
+    # Filtrer les données
+    subset_data <- recap_data_TEs[recap_data_TEs$Family == fam & recap_data_TEs$Population_Group == pop, ]
+    
+    # Calculer le nombre d'hétérozygotes et d'homozygotes
+    n_hetero <- sum(subset_data$Count_hetero, na.rm = TRUE)
+    n_homo <- sum(subset_data$Count_homo, na.rm = TRUE)
+    
+      test <- binom.test(n_hetero, n_hetero + n_homo, p = 0.5, alternative = "greater") # binom.test(nb succès, nb essais, proba de succès)
+      
+      # Ajouter les résultats
+      test_results[[paste(fam, pop, sep = "_")]] <- data.frame(
+        Family = fam,
+        Population_Group = pop,
+        p_value = test$p.value,
+        Significance = ifelse(test$p.value < 0.001, "***",
+                              ifelse(test$p.value < 0.01, "**",
+                                     ifelse(test$p.value < 0.05, "*", "ns")))
+      )
+  }
+}
+
+# Convertir en data
+grid.arrange(plot_gypsy_ratio, plot_copia_ratio, ncol = 2) frame
+test_results_df <- do.call(rbind, test_results)
+
+# Fusionner avec les données d'origine
+results_ratio_byFam_with_significance <- merge(recap_data_TEs, test_results_df, 
+                                   by = c("Family", "Population_Group"), 
+                                   all.x = TRUE)
+# enregistrer le doc
+#write.table(results_ratio_byFam_with_significance, "~/M2/Cafeier/Codes/Matrice_indv/results_ratio_byFam_with_significance.txt", sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+
+library(ggplot2)
+library(gridExtra)
+
+# Filtrer les données pour chaque superfamille
+gypsy_data <- results_ratio_byFam_with_significance[results_ratio_byFam_with_significance$Superfamily == "Gypsy", ]
+copia_data <- results_ratio_byFam_with_significance[results_ratio_byFam_with_significance$Superfamily == "Copia", ]
+
+# Graphique pour Gypsy
+plot_gypsy_ratio <- ggplot(gypsy_data, aes(x = Family, y = Ratio, fill = Family)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1, linetype = "solid", color = "red", linewidth = 0.3, size = 2) +  
+  facet_wrap(~Population_Group, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Gypsy - Distribution des ratios hétérozygotes/homozygotes",
+    x = "Familles Gypsy",
+    y = "Ratio hétérozygotes/homozygotes",
+    fill = "Famille Gypsy"
+  ) +
+  scale_fill_viridis_d(option = "plasma") +
+  
+  # Ajouter la significativité
+  geom_text(data = unique(gypsy_data[, c("Family", "Population_Group", "Significance")]),
+            aes(x = Family, y = max(gypsy_data$Ratio, na.rm = TRUE) * 1.08, label = Significance), 
+            size = 2, fontface = "bold", color = "grey20")
+
+# Graphique pour Copia
+plot_copia_ratio <- ggplot(copia_data, aes(x = Family, y = Ratio, fill = Family)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1, linetype = "solid", color = "red", linewidth = 0.3, size = 2) +  
+  facet_wrap(~Population_Group, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Copia - Distribution des ratios hétérozygotes/homozygotes",
+    x = "Familles Copia",
+    y = "Ratio hétérozygotes/homozygotes",
+    fill = "Famille Copia"
+  ) +
+  scale_fill_viridis_d(option = "viridis") +
+  
+  # Ajouter la significativité
+  geom_text(data = unique(copia_data[, c("Family", "Population_Group", "Significance")]),
+            aes(x = Family, y = max(copia_data$Ratio, na.rm = TRUE) * 1.08, label = Significance), 
+            size = 2, fontface = "italic", color = "grey20")
+
+# Afficher les deux graphiques côte à côte
+```
+
+Même chose, il n'y a que l'emplacement des etoiles qui change :
+
+```{r}
+# Préparation des données pour les étoiles - Gypsy
+significance_data_gypsy <- gypsy_data %>%
+  group_by(Family, Population_Group) %>%
+  summarize(
+    max_ratio = max(Ratio, na.rm = TRUE),
+    Significance = first(Significance)
+  ) %>%
+  ungroup()
+
+# Graphique pour Gypsy
+plot_gypsy_ratio <- ggplot(gypsy_data, aes(x = Family, y = Ratio, fill = Family)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1, linetype = "solid", color = "red", linewidth = 0.3, size = 2) +  
+  facet_wrap(~Population_Group, scales = "free_x") +
+  geom_text(data = significance_data_gypsy,
+            aes(x = Family, y = max_ratio * 2, label = Significance), 
+            size = 2, fontface = "bold", color = "grey20") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Gypsy - Distribution des ratios hétérozygotes/homozygotes",
+    x = "Familles Gypsy",
+    y = "Ratio hétérozygotes/homozygotes",
+    fill = "Famille Gypsy"
+  ) +
+  scale_fill_viridis_d(option = "plasma")
+
+# Même chose pour Copia
+significance_data_copia <- copia_data %>%
+  group_by(Family, Population_Group) %>%
+  summarize(
+    max_ratio = max(Ratio, na.rm = TRUE),
+    Significance = first(Significance)
+  ) %>%
+  ungroup()
+
+plot_copia_ratio <- ggplot(copia_data, aes(x = Family, y = Ratio, fill = Family)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1, linetype = "solid", color = "red", linewidth = 0.3, size = 2) +  
+  facet_wrap(~Population_Group, scales = "free_x") +
+  geom_text(data = significance_data_copia,
+            aes(x = Family, y = max_ratio * 2, label = Significance), 
+            size = 2, fontface = "italic", color = "grey20") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Copia - Distribution des ratios hétérozygotes/homozygotes",
+    x = "Familles Copia",
+    y = "Ratio hétérozygotes/homozygotes",
+    fill = "Famille Copia"
+  ) +
+  scale_fill_viridis_d(option = "viridis")
+
+grid.arrange(plot_gypsy_ratio, plot_copia_ratio, ncol = 2)
+```
+
+Ici on a des plots par famille TEs avec comparaison entre populations (rajouter wilcox+bonferroni) :
+
+```{r}
+library(ggplot2)
+library(gridExtra)
+
+# Pour Gypsy
+plot_gypsy_Ratio <- ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Gypsy",], aes(x = Population_Group, y = Ratio, fill = Population_Group)) +
+  geom_boxplot() +
+  #geom_hline(yintercept = 1, linetype = "solid", color = "red", linewidth = 0.3) +
+  facet_wrap(~Family, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Gypsy - Distribution des ratios du nombre de TEs sous forme homozygotes sur homozygotes par famille TEs",
+    x = "Groupe génétique",
+    y = "Ratio TEs hétérozygotes/homozygotes",
+    fill = "Groupe génétique"
+  ) +
+  scale_fill_viridis_d(option = "plasma") 
+
+# Pour Copia
+plot_copia_Ratio <- ggplot(recap_data_TEs[recap_data_TEs$Superfamily == "Copia",], aes(x = Population_Group, y = Ratio, fill = Population_Group)) +
+  geom_boxplot() +
+  #geom_hline(yintercept = 1, linetype = "solid", color = "red", linewidth = 0.3) +
+  facet_wrap(~Family, scales = "free_x") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 12)
+  ) +
+  labs(
+    title = "Copia - Distribution des ratios du nombre de TEs sous forme homozygotes sur homozygotes par famille TEs",
+    x = "Groupe génétique",
+    y = "Ratio TEs hétérozygotes/homozygotes",
+    fill = "Groupe génétique"
+  ) +
+  scale_fill_viridis_d(option = "viridis") 
+
+# Afficher les graphiques
+grid.arrange(plot_gypsy_Ratio, plot_copia_Ratio, ncol = 1)
+plot_gypsy_Ratio
+plot_copia_Ratio
+```
+
+# Visualisations par chromosome
+
+## Heatmap
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Résumé par famille, chromosome et superfamille
+heatmap_data <- recap_data_TEs_chr %>%
+  group_by(Chromosome, Family, Superfamily) %>%
+  summarise(Total_insertions = sum(Count), .groups = 'drop')
+
+ggplot(heatmap_data, aes(x = Chromosome, y = Family, fill = Total_insertions)) +
+  geom_tile(color = "white") +
+  scale_fill_viridis_c(option = "C", name = "Total insertions") +
+  facet_wrap(~ Superfamily, scales = "free_y") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Nombre d'insertion par famille TE et chromosome")
+
+```
+
+```{r}
+ordre_familles <- c("ATHILA", "CRM", "REINA", "TAT", "TEKAY", "ALE", "SIRE", "BIANCA", "TAR", "IVANA")
+
+heatmap_data <- recap_data_TEs_chr %>%
+  group_by(Population_Group, Chromosome, Superfamily, Family) %>%
+  summarise(mean_count = mean(Count, na.rm = TRUE), .groups = 'drop') %>%
+  mutate(Family = factor(Family, levels = ordre_familles))
+
+ggplot(heatmap_data, aes(x = Chromosome, y = Family, fill = mean_count)) +
+  geom_tile(color = "white") +
+  facet_wrap(~ Population_Group) +
+  scale_fill_viridis_c(option = "C", name = "Nombre TEs moyen") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 4),
+        axis.text.y = element_text(size = 5)) +
+  labs(title = "Charge moyenne en TEs par population, famille et chromosome")
+
+```
+
+## Barplot du nombre moyen d'insertions par famille TEs par chromosome
+
+indiquer taille de chr + nb de TEs/famille ?
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(viridis)  # pour les palettes 'viridis' et 'plasma'
+
+# Séparer les super-familles pour appliquer une palette différente à chacune
+bar_data <- recap_data_TEs_chr %>%
+  group_by(Chromosome, Family, Superfamily) %>%
+  summarise(Count = Count, .groups = 'drop')
+# Extraire les longueurs moyennes des chromosomes
+chr_lengths <- recap_data_TEs_chr %>%
+  select(Chromosome, chr_length_Mbp) %>%
+  distinct()
+# Créer deux jeux de données
+bar_data_gypsy <- bar_data %>% filter(Superfamily == "Gypsy")
+bar_data_copia <- bar_data %>% filter(Superfamily == "Copia")
+# Ajouter une colonne 'Total' à bar_data
+#bar_data <- bar_data %>%
+#  group_by(Chromosome, Superfamily) %>%
+ # summarise(Total_TE = sum(Count), .groups = "drop")
+
+# Affichage avec deux graphes côte à côte
+p1 <- ggplot(bar_data_gypsy, aes(x = Chromosome, y = Count, fill = Family)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_viridis_d(option = "plasma", name = "Family") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  labs(subtitle = "Gypsy", title = "Nombre moyen d'insertions par famille TEs par chromosome", y = "Nombre moyen d'insertion", x = "Chromosome") + 
+  geom_text(data = chr_lengths, aes(x = Chromosome, y = max(bar_data_gypsy$Count)*0.27 , label = paste0(round(chr_length_Mbp), " Mbp")),inherit.aes = FALSE, size = 3, angle = 90, color="grey30") 
+#+  geom_text(data = bar_data %>% filter(Superfamily == "Gypsy"), 
+#            aes(x = Chromosome, y = Total_TE + 10, label = round(Total_TE)), 
+ #           inherit.aes = FALSE, size = 3, angle = 90, vjust = -0.3)
+
+
+p2 <- ggplot(bar_data_copia, aes(x = Chromosome, y = Count, fill = Family)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_viridis_d(option = "viridis", name = "Family") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  labs(subtitle = "Copia", y = "Nombre moyen d'insertion", x = "Chromosome") + 
+  geom_text(data = chr_lengths, aes(x = Chromosome, y = max(bar_data_copia$Count)*0.27 , label = paste0(round(chr_length_Mbp), " Mbp")),inherit.aes = FALSE,size = 3, angle = 90, color="grey30") 
+#+  geom_text(data = bar_data %>% filter(Superfamily == "Copia"), 
+ #           aes(x = Chromosome, y = Total_TE + 10, label = round(Total_TE)), 
+  #          inherit.aes = FALSE, size = 3, angle = 90, vjust = -0.3)
+
+
+
+# Afficher les deux graphiques côte à côte
+library(patchwork)
+p1 + p2
+
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(viridis)
+library(patchwork)
+
+# Préparation des données
+bar_data <- recap_data_TEs_chr %>%
+  group_by(Chromosome, Family, Superfamily) %>%
+  reframe(Count = Count) %>%
+  ungroup()
+
+# Extraire les longueurs des chromosomes
+chr_lengths <- recap_data_TEs_chr %>%
+  select(Chromosome, chr_length_Mbp) %>%
+  distinct()
+
+# Créer deux jeux de données
+bar_data_gypsy <- bar_data %>% filter(Superfamily == "Gypsy")
+bar_data_copia <- bar_data %>% filter(Superfamily == "Copia")
+
+# Définir les limites maximales pour les deux axes
+max_y_primary_gypsy <- max(aggregate(Count ~ Chromosome, bar_data_gypsy, sum)$Count)
+max_y_primary_copia <- max(aggregate(Count ~ Chromosome, bar_data_copia, sum)$Count)
+max_y_secondary <- 80  # Limite maximale pour l'axe secondaire
+
+# Calculer les facteurs de conversion
+convert_gypsy <- max_y_secondary / max_y_primary_gypsy
+convert_copia <- max_y_secondary / max_y_primary_copia
+
+# Ajouter un décalage pour élever la ligne au-dessus des barres
+# Décalage d'environ 10% au-dessus de la hauteur maximale des barres
+offset_gypsy <- max_y_primary_gypsy * 0.1
+offset_copia <- max_y_primary_copia * 0.1
+
+# Graphique pour Gypsy avec axe secondaire
+p1 <- ggplot(bar_data_gypsy, aes(x = Chromosome, y = Count, fill = Family)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_viridis_d(option = "plasma", name = "Family") +
+  # Définir les limites des axes Y et ajouter l'axe secondaire
+  scale_y_continuous(
+    name = "Nombre d'insertions TEs",
+    limits = c(0, max_y_primary_gypsy * 1.15),  # Augmenter la limite pour accommoder le décalage
+    sec.axis = sec_axis(~ . * convert_gypsy, name = "Taille du chromosome (Mbp)", breaks = seq(0, 80, 10))
+  ) +
+  # Ajouter les points pour représenter la taille des chromosomes avec un décalage
+  geom_point(data = chr_lengths, aes(x = Chromosome, y = (chr_length_Mbp / convert_gypsy) + offset_gypsy), 
+             inherit.aes = FALSE,
+             color = "black", size = 2, shape = 18) +
+  # Relier les points pour mieux visualiser avec le même décalage
+  geom_line(data = chr_lengths, aes(x = Chromosome, y = (chr_length_Mbp / convert_gypsy) + offset_gypsy, group = 1), 
+            inherit.aes = FALSE,
+            color = "black", linetype = "dashed", linewidth = 0.5) +
+  # Ajouter une annotation pour indiquer ce que représente la ligne
+  annotate("text", x = 1, y = max_y_primary_gypsy * 1.1, 
+           label = "", hjust = 0, size = 3, color = "black") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    axis.title.y.right = element_text(color = "black")
+  ) +
+  labs(subtitle = "Gypsy", title = "Nombre d'insertions par famille TEs par chromosome", x = "Chromosome")
+
+# Graphique pour Copia avec axe secondaire
+p2 <- ggplot(bar_data_copia, aes(x = Chromosome, y = Count, fill = Family)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_viridis_d(option = "viridis", name = "Family") +
+  # Définir les limites des axes Y et ajouter l'axe secondaire
+  scale_y_continuous(
+    name = "Nombre d'insertions TEs",
+    limits = c(0, max_y_primary_copia * 1.15),  # Augmenter la limite pour accommoder le décalage
+    sec.axis = sec_axis(~ . * convert_copia, name = "Taille du chromosome (Mbp)", breaks = seq(0, 80, 10))
+  ) +
+  # Ajouter les points pour représenter la taille des chromosomes avec un décalage
+  geom_point(data = chr_lengths, aes(x = Chromosome, y = (chr_length_Mbp / convert_copia) + offset_copia), 
+             inherit.aes = FALSE,
+             color = "black", size = 2, shape = 18) +
+  # Relier les points pour mieux visualiser avec le même décalage
+  geom_line(data = chr_lengths, aes(x = Chromosome, y = (chr_length_Mbp / convert_copia) + offset_copia, group = 1), 
+            inherit.aes = FALSE,
+            color = "black", linetype = "dashed", linewidth = 0.5) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    axis.title.y.right = element_text(color = "black")
+  ) +
+  labs(subtitle = "Copia", x = "Chromosome")
+
+# Afficher les deux graphiques côte à côte
+p1 + p2
+```
+
+Idem avec la densité en divisant par la longueur du chr
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(viridis)
+library(patchwork)
+
+# Recalcul des moyennes de densité
+bar_data_density <- recap_data_TEs_chr %>%
+  group_by(Chromosome, Family, Superfamily) %>%
+  summarise(Density = mean(Density), .groups = 'drop')
+
+# Séparer les deux super-familles
+bar_gypsy <- bar_data_density %>% filter(Superfamily == "Gypsy")
+bar_copia <- bar_data_density %>% filter(Superfamily == "Copia")
+
+# Graphiques avec palettes distinctes
+barplot_density_gypsy <- ggplot(bar_gypsy, aes(x = Chromosome, y = Density, fill = Family)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_viridis_d(option = "plasma") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  labs(subtitle = "Gypsy", title = "Densité d’insertion par famille TEs par chromosome", y = "Insertions / Mbp", x = "Chromosome")
+
+barplot_density_copia <- ggplot(bar_copia, aes(x = Chromosome, y = Density, fill = Family)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_viridis_d(option = "viridis") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  labs(subtitle = "Copia", y = "Insertions / Mbp", x = "Chromosome")
+
+# Combiner les deux
+barplot_density_gypsy + barplot_density_copia
+
+```
+
+## Boxplot par famille pour visualiser la variation inter-individus (par chromosome)
+
+```{r}
+ggplot(recap_data_TEs_chr, aes(x = Family, y = Count, fill = Superfamily)) +
+  geom_boxplot(outlier.size = 0.5) +
+  facet_wrap(~ Chromosome, scales = "free_x") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(title = "Distribution du nombre d’insertion par famille TEs et par chromosome")
+
+ggplot(recap_data_TEs_chr, aes(x = Family, y = Density, fill = Superfamily)) +
+  geom_boxplot(outlier.size = 0.5) +
+  facet_wrap(~ Chromosome, scales = "free_x") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(title = "Distribution de la densité d’insertion par famille TEs et par chromosome")
+
+```
+
+Par famille TEs, par chromosome, par population (groupe génétique)
+
+```{r}
+library(ggplot2)
+ggplot(recap_data_TEs_chr, aes(x = Population_Group, y = Count, fill = Population_Group)) +
+  geom_boxplot(outlier.size = 0.5) +
+  facet_grid(Chromosome ~ Family, scales = "free_y") +
+  theme_bw() +
+  labs(title = "Comparaison du nombre d’insertion par population",
+       y = "Nombre d'insertion",
+       x = "Population") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size= 6),
+        axis.text.y = element_text(size= 6))
+
+```
+
+```{r}
+
+```

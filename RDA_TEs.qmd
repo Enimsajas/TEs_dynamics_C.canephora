@@ -1,0 +1,1439 @@
+---
+p---
+title: "RDA"
+format: html
+editor: visual
+---
+
+# RDA Analyse de redondance
+
+L'analyse de redondance (RDA) est une méthode d'association génotype-environnement permettant d'identifier des haplotypes (ensemble de gènes d'un des parents) uniques associés à l'environnement multivarié. Des test par simulations ont permis de montrer que les résultats de RDA sont robustes à tous les niveaux de la structure de la population, des histoires démographiques, des plans d'échantillonnage et des tailles d'échantillon testés (Forester et al., 2018).
+
+Dans l'ensemble, la RDA est un moyen efficace de détecter la sélection locale en génétique des populations, constituant un outil de choix à l'étude de l'adaptation locale pour les TEs et potentiellment prendre en compte ces résultats afin de conserver le potentiel évolutif des groupes génétiques de l'espèces.
+
+méthode d'**analyse multivariée** qui combine la **régression multiple** et l'**Analyse en Composantes Principales (ACP)**.
+
+Identifier quelles variables environnementales influencent la diversité génétique.
+
+Réduire la dimension des données tout en gardant l'information pertinente.
+
+Détecter la sélection locale en génétique des populations.
+
+#### Données environnementales
+
+```{r}
+library(readxl)
+env <- read_excel("~/M2/Cafeier/data_coffea/passeport-climatic_variables_af_viet.xlsx", 
+    sheet = "Afr-climatic_variables_wc2.1")
+
+library(dplyr)
+# Modifier le dataframe 'env'
+env <- env %>%
+  rename(Individual = Label) %>%  # Renommer 'Label' en 'Individual'
+  mutate(Population = case_when(
+    snp_group %in% c("A", "G") ~ "AG",
+    snp_group == "C" ~ "C",
+    snp_group == "D" ~ "D",
+    snp_group %in% c("O", "B") ~ "OB",
+    snp_group == "hb" ~ "hb",
+    snp_group == "E" ~ "E"
+  ))
+env <- env %>%
+  select(Individual, Population, Long, Lat, everything())  # Réorganiser les colonnes
+
+# Vérifier les changements
+head(env)
+
+library(psych)
+pairs.panels(env[,6:25], scale=T)
+png("~/M2/Cafeier/Codes/Figures/RDA/pairs_env_variables.png", width = 9000, height = 9000, res = 300)
+pairs.panels(env[,6:25], scale = TRUE)
+dev.off()
+```
+
+```{r}
+# Charge les packages nécessaires
+library(ggplot2)
+library(data.table)
+library(dplyr)
+
+# Le fichier .eigenvec 
+PCA_all_famTEs <- read.table("~/M2/Cafeier/Codes/Tests_TEs/ACP/All_family_PCA.eigenvec", header=FALSE, sep="")
+# Ajouter les noms de colonnes
+colnames(PCA_all_famTEs) <- c("FID", "Individual", paste0("PC", 1:(ncol(PCA_all_famTEs)-2)))
+
+PCA_all_famTEs <- left_join(PCA_all_famTEs, correspondance, by = c("Individual"="Bam"))
+PCA_all_famTEs <- subset(PCA_all_famTEs, Group_analysis %in% c("A","G", "B", "C", "D" ,"E", "O", "R", "hb", "V"))
+# ggplot(df3)+ geom_point(aes(PC1, PC2, color=Group_analysis), size=5)
+# Créer une nouvelle variable de groupe dans df3
+PCA_all_famTEs$Group_combined <- as.character(PCA_all_famTEs$Group_analysis)
+
+# Regrouper A et G en "AG" (ou AR si c'est ce que vous souhaitez)
+PCA_all_famTEs$Group_combined[PCA_all_famTEs$Group_analysis %in% c("A", "G")] <- "AG"
+
+# Regrouper O et B en "OB"
+PCA_all_famTEs$Group_combined[PCA_all_famTEs$Group_analysis %in% c("O", "B")] <- "OB"
+
+# Regrouper E et R en "ER"
+PCA_all_famTEs$Group_combined[PCA_all_famTEs$Group_analysis %in% c("E", "R")] <- "ER"
+
+
+rda_env <- merge(PCA_all_famTEs, env, by = "Individual")
+head(rda_env)
+```
+
+##### ACP envirt
+
+```{r}
+bioclim_vector <- c(paste("bio", seq(1:19),sep="_"), "elevation")
+
+# enlever C044-MERGED
+rda_env <- rda_env[c(1:46,48:nrow(rda_env)),]
+
+# Select relevant variables (assuming df is your dataframe)
+pca_data <- rda_env[, which(colnames(rda_env) %in% bioclim_vector)]
+ 
+
+pca_envir <- prcomp(pca_data, center = TRUE, scale. = TRUE)
+toadd = pca_envir$x
+colnames(toadd)=paste("env_", colnames(toadd), sep="")
+rda_env = cbind(rda_env, toadd)
+
+write.table(rda_env, "~/M2/Cafeier/Codes/Figures/RDA/rda_env", row.names = FALSE, col.names = T, quote = FALSE)
+```
+
+```{r}
+# Installer si nécessaire
+# install.packages("factoextra")
+# install.packages("patchwork")
+
+library(factoextra)
+library(ggplot2)
+library(patchwork)
+# Variance expliquée
+var_explained <- pca_envir$sdev^2 / sum(pca_envir$sdev^2)
+
+# --- 1. Screeplot ---
+# Créer un dataframe pour ggplot
+scree_df <- data.frame(
+  PC = factor(paste0("PC", 1:20), levels = paste0("PC", 1:20)),
+  Variance = var_explained[1:20]
+)
+
+# Barplot ggplot
+p_scree <- ggplot(scree_df, aes(x = PC, y = Variance)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  theme_minimal() +
+  labs(title = "Variance expliquée par axe",
+       subtitle = "(ACP environnementale)",
+       x = "Composantes principales",
+       y = "Proportion de variance expliquée") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+# --- 2. Scatterplot PC1 vs PC2 ---
+pca_scores <- as.data.frame(pca_envir$x)
+pca_scores$Individual <- rda_env$Individual
+pca_scores$Group <- rda_env$Group_combined
+
+p1 <- ggplot(pca_scores, aes(x = PC1, y = PC2, color = Group)) +
+  geom_point(size = 3) +
+  stat_ellipse() +
+  theme_minimal() +
+  labs(title = "PCA environnementale (PC1 vs PC2)",
+       x = paste0("PC1 (", round(var_explained[1] * 100, 1), "%)"),
+       y = paste0("PC2 (", round(var_explained[2] * 100, 1), "%)")) +
+  theme(legend.position = "right")
+
+# --- 3. Cercle corrélations PC1 vs PC2 ---
+p2 <- fviz_pca_var(pca_envir,
+                   #col.var = "cos2", # Contribution 
+                   #gradient.cols = c("blue", "orange", "red"),
+                   repel = TRUE,
+                   title = "Corrélations : PC1 vs PC2")
+
+# --- 4. Cercle corrélations PC3 vs PC4 ---
+p3 <- fviz_pca_var(pca_envir, axes = c(3, 4),
+                  # col.var = "cos2",
+                  # gradient.cols = c("blue", "white", "red"),
+                   repel = TRUE,
+                   title = "Corrélations : PC3 vs PC4")
+# Final !!! : 2 lignes, 2 colonnes
+(p1 |p_scree ) 
+(p2 | p3)
+
+```
+
+```{r}
+# contributions des variables à chaque axes ACP envirt
+fviz_contrib(pca_envir, choice = "var", axes = 1, top = 15) +
+  labs(title = "Contribution des variables à PC1")
+
+fviz_contrib(pca_envir, choice = "var", axes = 2, top = 15) +
+  labs(title = "Contribution des variables à PC2")
+
+fviz_contrib(pca_envir, choice = "var", axes = 3, top = 15) +
+  labs(title = "Contribution des variables à PC3")
+
+```
+
+##### Carte géo indivs axes acp
+
+```{r}
+
+install.packages("geodata")
+install.packages("terra")
+install.packages("adegenet")
+install.packages("vegan")
+install.packages("data.table")
+install.packages("ggplot2")
+install.packages("robust")
+install.packages("qvalue")
+install.packages("psych")
+install.packages("terra")
+install.packages("raster")
+install.packages("rworldmap")
+install.packages("dplyr")
+install.packages("caret")
+
+library(geodata)
+library(terra)
+library(adegenet)
+library(vegan)
+library(data.table)
+library(ggplot2)
+library(robust)
+library(qvalue)
+library(psych)
+library(terra)
+library(raster)
+library(rworldmap)
+library(dplyr)
+library(caret)
+
+total= rda_env # read.table("rda_env.txt",h=T)
+map.polygon <- getMap(resolution = "low")
+
+A=ggplot() +
+    # Plot the map
+    geom_path(data = map.polygon, aes(x = long, y = lat, group = group), color = "black") +
+    
+    # Add lines from original position to jittered position
+    # Plot jittered points
+    geom_point(data = total, aes(x = Long, y = Lat, fill = env_PC1), 
+               size = 5, shape = 21, color = "black") +  # Black outline for visibility
+    
+    scale_fill_gradient2(low = "darkblue", high = "red") +  
+    xlim(-15, 35) + 
+    ylim(-12,12) +
+    coord_equal() + 
+    xlab("Longitude") +
+    ylab("Latitude") + 
+    theme_bw()
+
+
+
+B=ggplot() +
+    # Plot the map
+    geom_path(data = map.polygon, aes(x = long, y = lat, group = group), color = "black") +
+    
+    # Add lines from original position to jittered position
+    # Plot jittered points
+    geom_point(data = total, aes(x = Long, y = Lat, fill = env_PC2), 
+               size = 5, shape = 21, color = "black") +  # Black outline for visibility
+    
+    scale_fill_gradient2(low = "darkblue", high = "red") +  
+    xlim(-15, 35) + 
+    ylim(-12,12) +
+    coord_equal() + 
+    xlab("Longitude") +
+    ylab("Latitude") + 
+    theme_bw()
+
+
+
+
+
+
+
+C=ggplot() +
+    # Plot the map
+    geom_path(data = map.polygon, aes(x = long, y = lat, group = group), color = "black") +
+    
+    # Add lines from original position to jittered position
+    # Plot jittered points
+    geom_point(data = total, aes(x = Long, y = Lat, fill = env_PC3), 
+               size = 5, shape = 21, color = "black") +  # Black outline for visibility
+    
+    scale_fill_gradient2(low = "darkblue", high = "red") +  
+    xlim(-15, 35) + 
+    ylim(-12,12) +
+    coord_equal() + 
+    xlab("Longitude") +
+    ylab("Latitude") + 
+    theme_bw()
+
+
+D=ggplot() +
+    # Plot the map
+    geom_path(data = map.polygon, aes(x = long, y = lat, group = group), color = "black") +
+    
+    # Add lines from original position to jittered position
+    # Plot jittered points
+    geom_point(data = total, aes(x = Long, y = Lat, fill = PC1), 
+               size = 5, shape = 21, color = "black") +  # Black outline for visibility
+    
+    scale_fill_gradient2(low = "darkblue", high = "red") +  
+    xlim(-15, 35) + 
+    ylim(-12,12) +
+    coord_equal() + 
+    xlab("Longitude") +
+    ylab("Latitude") + 
+    theme_bw()
+
+
+A
+B
+C
+D
+
+ggarrange(A,B,C,D)
+```
+
+#### Data indiv matrice
+
+pour data manquante ici on a pris . comme des abscences (biais vers faux negatifs), on est plus stringent. Nous pourrions également utiliser une approche d'imputation. D'autres méthodes d'imputation prometteuses pour les espèces dépourvues de génome de référence comprennent : l'utilisation des valeurs d'ascendance de snmf dans le paquet LEA (Frichot & Francois 2015), l'utilisation de Random Forest (mis en œuvre pour les données génomiques dans le paquet R grur, Gosselin 2017), et le programme LinkImpute (Money et al., 2015)
+
+```{bash}
+# Chargement du module PLINK (nécessaire sur certains systèmes, comme les clusters HPC)
+module load plink  
+module load vcftools
+module load bcftools
+
+vcftools --vcf /shared/projects/te_coffea/vcf_for_phasing/test_biallelic.vcf --remove-filtered-all --keep indv_list_rda --out /shared/projects/te_coffea/vcf_for_phasing/test_biallelic_filtered --recode --recode-INFO-all
+
+# trier par chr position
+bcftools sort test_biallelic_filtered.recode.vcf -o sort_test_biallelic_filtered.recode.vcf 
+
+plink --vcf sort_test_biallelic_filtered.recode.vcf --maf 0.05 --geno 0 --double-id --vcf-half-call reference --make-bed --allow-extra-chr --out filtered_all --recode 
+
+plink --bfile filtered_all --allow-extra-chr --double-id --recodeA --out filtered_raw
+
+# explications
+# Exécution de PLINK sur un fichier VCF compressé avec plusieurs filtres :
+plink --vcf sort_test_biallelic_filtered.recode.vcf \  # Chargement du fichier VCF
+      --maf 0.05 \  # Filtrage des variants ayant une fréquence allélique mineure (MAF) inférieure à 5%
+      --geno 0 \  # Supprime les SNPs avec des données manquantes
+      --make-bed \  # Crée des fichiers PLINK binaire (.bed, .bim, .fam)
+      --allow-extra-chr \  # Autorise les chromosomes non standards
+      --out filtered_all \  # Définit le préfixe de sortie des fichiers
+      --recode  # Génère aussi un fichier PED/MAP en plus des fichiers binaires
+# Conversion du fichier binaire en format "raw" pour une analyse numérique :
+plink --bfile filtered_all \  # Chargement du fichier binaire généré précédemment
+      --allow-extra-chr \  # Autorise les chromosomes non standards
+      --double-id \  # Duplication des ID des individus
+      --recodeA \  # Convertit les génotypes en format numérique (0, 1, 2 copies de l'allèle de référence)
+      --out filtered_raw  # Définit le préfixe du fichier de sortie
+      
+
+```
+
+128817 MB RAM detected; reserving 64408 MB for main workspace. --vcf: filtered_all-temporary.bed + filtered_all-temporary.bim + filtered_all-temporary.fam written. 88088 variants loaded from .bim file. 120 people (0 males, 0 females, 120 ambiguous) loaded from .fam. Ambiguous sex IDs written to filtered_all.nosex . Using 1 thread (no multithreaded calculations invoked). Before main variant filters, 120 founders and 0 nonfounders present. Calculating allele frequencies... done. 0 variants removed due to missing genotype data (--geno). 72354 variants removed due to minor allele threshold(s) (--maf/--max-maf/--mac/--max-mac). 15734 variants and 120 people pass filters and QC. Note: No phenotypes present. --make-bed to filtered_all.bed + filtered_all.bim + filtered_all.fam ... done. --recode ped to filtered_all.ped + filtered_all.map ... done.
+
+## RDA
+
+nous avons normalisé les variables climatiques afin d'éviter les écarts de moyenne et d'écart-type entre les variables et de garantir que les unités des variables soient comparables.
+
+Pour mener à bien la procédure de sélection, nous avons utilisé la fonction ordiR2step du paquet vegan et les critères d'arrêt suivants : signification de la variable de p \< 0,05 en utilisant 1000 permutations, et le R2 ajusté du modèle global.
+
+cette approche prédictive de la sélection des variables optimise la variance expliquée, mais n'identifie pas nécessairement les moteurs écologiques ou mécanistes de la variation génétique. En outre, les corrélations de prédicteurs par paire peuvent être très élevées, par exemple entre les calculs saisonniers de la température ou des précipitations. Alors qu'une variable peut maximiser la variance expliquée, il se peut qu'une autre variable corrélée, peut-être même non mesurée, soit le moteur mécanique de la variation. La nature omniprésente de la corrélation environnementale signifie qu'il est essentiel d'étudier soigneusement les variables sélectionnées, mais aussi d'éviter de surinterpréter l'importance des variables dans les analyses en aval, à moins que des données mécanistes ne viennent étayer les relations observées.
+
+```{r}
+#install.packages("adegenet")
+library(adegenet)  # Analyse de génétique des populations
+library(vegan)  # Analyse de la diversité écologique, PCA, RDA, etc.
+library(dplyr)
+
+gen=read.PLINK("~/M2/Cafeier/Codes/Tests_TEs/ACP/filtered_raw.raw", map.file = "~/M2/Cafeier/Codes/Tests_TEs/ACP/filtered_all.map")
+# Lire le fichier .map
+map <- read.table("~/M2/Cafeier/Codes/Tests_TEs/ACP/filtered_all.map", header = FALSE)
+colnames(map) <- c("CHR", "SNP", "CM", "POS")
+# Associer les chromosomes et positions à l'objet genlight
+gen@chromosome <- as.factor(map$CHR)
+gen@position <- as.integer(map$POS)
+# nLoc(gen) == nrow(map)  # doit retourner TRUE
+
+
+ rda_env <- rda_env %>%
+  mutate(Individual = factor(Individual, levels = gen@ind.names)) %>%
+ arrange(Individual)
+# rda_env$Individual==gen@ind.names # que des trues meme organisation
+
+# centrer red
+rda_env[, 57 :76] <- scale(rda_env[, 57 :76], center=TRUE, scale=TRUE)
+# RDA
+ #modeles
+ ## null part de variance une fois corrigée par str pop : 
+ 
+RDAnull <- rda(gen ~ 1 + Condition(PC1+ PC2+ PC3), rda_env)
+RDAcomplete <- rda(gen ~ env_PC1 + env_PC2 + env_PC3 + Condition(PC1+ PC2+ PC3), rda_env) # 
+RDAcomplete2 <- rda(gen ~ env_PC1 + env_PC2 + env_PC3 + env_PC4 + Condition(PC1+ PC2+ PC3), rda_env)
+RDApuregenet <- rda(gen ~ PC1+ PC2+ PC3 + Condition(env_PC1 + env_PC2 + env_PC3), rda_env) # maximisation attribution var a envirt pour donner le reste à var genet
+RDApuregeo  <- rda(gen ~ Long + Lat + Condition(PC1+ PC2+ PC3 + env_PC1 + env_PC2 + env_PC3), rda_env)
+
+plot(RDAcomplete2, scaling = 3)
+load_rda <- scores(RDAcomplete, choices = c(1:3), display="species") #species=TEs ici
+hist(load_rda[,1]) # coordonnees TEs sur axe rda
+
+# comparaison modeles
+mod <- ordiR2step(RDAnull, RDAcomplete2, Pin=0.05, R2permutation = 1000, R2scope =T) # pin limite des permurations si pval inf de la variable elle est prise en compte, et R2scope n'ajoute que les modeles mieux explicatif
+
+mod$anova
+```
+
+Tout d'abord, il convient de noter que nous aurons autant d'axes contraints (« RDA ») que de prédicteurs dans le modèle. Toute la variance résiduelle est ensuite modélisée par l'ACP (les axes « PC » non contraints). La proportion de la variance expliquée par les prédicteurs environnementaux est indiquée dans la colonne « Proportion » pour « Contraint » ; cela équivaut au R2 d'une régression multiple. Tout comme dans le cas d'une régression multiple, ce R2 sera biaisé et devra être ajusté en fonction du nombre de prédicteurs. Nous pouvons calculer le R2 ajusté en utilisant :
+
+```{r}
+RsquareAdj(RDAcomplete)
+```
+
+Notre ordination contrainte explique environ 5 % (2% en ajusté) de la variation ; ce faible pouvoir explicatif n'est pas surprenant étant donné que nous nous attendons à ce que la plupart des TEs de notre ensemble de données soient neutres à faiblement délétères et ne présentent pas de relation avec les prédicteurs environnementaux.
+
+Les valeurs propres des axes contraints reflètent la variance expliquée par chaque axe canonique :
+
+```{r}
+summary(eigenvals(RDAcomplete, model = "constrained"))
+screeplot(RDAcomplete)
+```
+
+Nous commencerons par des graphiques tripartites simples issus du package vegan. Ici, nous utiliserons scaling=3 (également connu sous le nom de « symmetrical scaling ») pour les graphiques d'ordination. Cela met à l'échelle les scores TEs et individuels par la racine carrée des valeurs propres. Voir Borcard et al. (2011) (ou l'aide de vegan) pour plus d'informations sur la mise à l'échelle dans les graphiques RDA.
+
+```{r}
+plot(RDAcomplete, scaling=3)          # default is axes 1 and 2
+plot(RDAcomplete, choices = c(1, 3), scaling=3)  # axes 1 and 3
+```
+
+Ici, les TEs sont en rouge (au centre de chaque graphique), et les individus sont les cercles noirs. Les vecteurs bleus sont les prédicteurs environnementaux (suite à ACP). La disposition relative de ces éléments dans l'espace d'ordination reflète leur relation avec les axes d'ordination, qui sont des combinaisons linéaires des variables prédictives.
+
+Réalisons des tracés plus informatifs. Nous allons colorer les points individuels en fonction de leur écotype, que nous pouvons trouver dans l'ensemble de données env.
+
+```{r}
+levels(rda_env$Group_combined) <- c("D","C","AG","ER","hb","OB")
+pops <- rda_env$Group_combined
+pops <- factor(pops, levels = c("D", "C", "AG", "ER", "hb", "OB"))
+
+colors <- c("#F7945D",  # D
+            "#69A9D5",  # C
+            "#8FCB9B",  # AG
+            "#C89BCB",  # ER
+            "#FFDA8A",  # hb (jaune pastel soutenu)
+            "#F47C98")  # OB
+colors <- colors[as.numeric(pops)]
+
+
+# 3. Biplot RDA : Axes 1 & 2
+plot(RDAcomplete, type = "n", scaling = 3)
+points(RDAcomplete, display = "species", pch = 20, cex = 0.7, col = "gray32", scaling = 3)
+points(RDAcomplete, display = "sites", pch = 21, cex = 0.7, col = "gray32", bg = colors[pops], scaling = 3)
+text(RDAcomplete, display = "bp", col = "#0868ac", cex = 1, scaling = 3)
+# Ajouter ellipses par groupe
+ordiellipse(scores(RDAcomplete, display = "sites", scaling = 3),
+            groups = pops,
+            col = colors,
+            label = FALSE,
+            kind = "sd",   # type d'ellipse : "sd" = écart-type
+            draw = "lines", alpha = 50, border = NA)
+legend("bottomright", legend = levels(pops), bty = "n", col = "gray32", pch = 21, pt.bg = colors, cex = 1)
+
+# 4. Biplot RDA : Axes 1 & 3
+plot(RDAcomplete, type = "n", scaling = 3, choices = c(1, 3))
+points(RDAcomplete, display = "species", pch = 20, cex = 0.7, col = "gray32", scaling = 3, choices = c(1, 3))
+points(RDAcomplete, display = "sites", pch = 21, cex = 0.7, col = "gray32", bg = colors[pops], scaling = 3, choices = c(1, 3))
+text(RDAcomplete, display = "bp", col = "#0868ac", cex = 1, scaling = 3, choices = c(1, 3))
+# Ajouter ellipses par groupe
+ordiellipse(scores(RDAcomplete, display = "sites", scaling = 3, choices = c(1, 3)),
+            groups = pops,
+            col = colors,
+            label = FALSE,
+            kind = "sd",   # type d'ellipse : "sd" = écart-type
+            draw = "lines", alpha = 50, border = NA)
+legend("topleft", legend = levels(pops), bty = "n", col = "gray32", pch = 21, pt.bg = colors, cex = 1)
+
+```
+
+### Trouver les outliers
+
+Identifier les TEs candidats impliqués dans l'adaptation locale Nous utiliserons les charges des TEs dans l'espace d'ordination pour déterminer quels TEs sont candidats à l'adaptation locale. Les charges des TEs sont stockées en tant qu'espèces dans l'objet RDA. Nous allons extraire les charges TEs des trois axes contraints (significatifs ?). Puis en examinant les histogrammes des charges sur chaque axe RDA, nous pouvons voir leurs distributions (relativement normales). Les TEs qui se chargent au centre de la distribution ne présentent pas de relation avec les prédicteurs environnementaux ; ceux qui se chargent dans les queues le font et sont plus susceptibles d'être sélectionnés en fonction de ces prédicteurs (ou d'un autre prédicteur en corrélation avec eux).\
+Les charge (**loadings)** représentent la **contribution** de chaque variable **à un axe** principal (ou contraint dans le cas d’une RDA). Ils permettent de comprendre **quelles variables expliquent le mieux** chaque axe
+
+```{r}
+load.rda <- scores(RDAcomplete, choices=c(1:3), display="species")  # Sscores
+par(mfrow = c(1, 3))  # 1 ligne, 3 colonnes
+hist(load.rda[,1], main="Distribution TE - RDA1")
+hist(load.rda[,2], main="Distribution TE - RDA2")
+hist(load.rda[,3], main="Distribution TE - RDA3") 
+
+
+
+
+# Définir la disposition multi-graphique
+par(mfrow = c(1, 3))  
+
+# Histogramme pour RDA1
+hist(load.rda[,1], 
+     main = "Contribution TE -  RDA1", 
+     xlab = "Contribution TE", 
+     col = "skyblue")
+abline(v = mean(load.rda[,1]) + 3 * sd(load.rda[,1]), col = "red", lty = 2, lwd = 2)
+abline(v = mean(load.rda[,1]) - 3 * sd(load.rda[,1]), col = "red", lty = 2, lwd = 2)
+
+# Histogramme pour RDA2
+hist(load.rda[,2], 
+     main = "Contribution TE -  RDA2", 
+     xlab = "Contribution TE", 
+     col = "orange")
+abline(v = mean(load.rda[,2]) + 3 * sd(load.rda[,2]), col = "red", lty = 2, lwd = 2)
+abline(v = mean(load.rda[,2]) - 3 * sd(load.rda[,2]), col = "red", lty = 2, lwd = 2)
+
+# Histogramme pour RDA3
+hist(load.rda[,3], 
+     main = "Contribution TE -  RDA3", 
+     xlab = "Contribution TE", 
+     col = "lightgreen")
+abline(v = mean(load.rda[,3]) + 3 * sd(load.rda[,3]), col = "red", lty = 2, lwd = 2)
+abline(v = mean(load.rda[,3]) - 3 * sd(load.rda[,3]), col = "red", lty = 2, lwd = 2)
+
+# Réinitialiser le layout
+par(mfrow = c(1, 1))
+
+```
+
+#### Methode 1 : TEs en queue de distribution à un seuil de trois écarts-types
+
+Ci après une fonction pour identifier les TEs qui se trouvent dans les queues de ces distributions. Nous commencerons par un seuil de 3 écarts types (valeur p bilatérale = 0,0027). Comme pour tous les seuils, celui-ci peut être modifié pour refléter les objectifs de l'analyse et notre tolérance pour les vrais positifs par rapport aux faux positifs. Par exemple, afin de minimiser les taux de faux positifs (loci soumis à une très forte sélection), nous pourrions augmenter le nombre d'écarts-types à 3,5 (valeur p bilatérale = 0,0005). Cela augmenterait également le taux de faux négatifs. Si vous êtes moins préoccupé par les faux positifs et plus soucieux d'identifier le plus grand nombre possible de loci candidats potentiels (y compris ceux qui pourraient être soumis à une sélection plus faible), vous pourriez choisir un seuil d'écart-type de 2,5 (valeur p bilatérale = 0,012).
+
+Ici la fonction est définie afin de trouver des valeurs aberrantes, où x est le vecteur de charges et z le nombre d'écarts types à utiliser. elle est ensuite appliquée à chaque axe contraint :
+
+```{r}
+outliers <- function(x,z){
+  lims <- mean(x) + c(-1, 1) * z * sd(x)     # trouver les charges +/-z sd de la charge moyenne    
+  x[x < lims[1] | x > lims[2]]               # noms de locus dans ces queues de distrib
+}
+
+# applicatiuon
+cand1 <- outliers(load.rda[,1],3) # 212
+cand2 <- outliers(load.rda[,2],3) # 136
+cand3 <- outliers(load.rda[,3],3) # 146
+
+ncand <- length(cand1) + length(cand2) + length(cand3)
+ncand # 494
+```
+
+Nous avons 212 candidats sur l'axe 1, 136 sur l'axe 2 et 146 sur l'axe 3, pour un total de 494 TEs candidats.
+
+Ensuite, nous allons organiser nos résultats en créant un cadre de données avec l'axe, le nom du TEs, le chargement et la corrélation avec chaque prédicteur et ajouter la corrélation avec chaque axe prédicteur de l'ACP environnementale :
+
+```{r}
+cand1 <- cbind.data.frame(rep(1,times=length(cand1)), names(cand1), unname(cand1))
+cand2 <- cbind.data.frame(rep(2,times=length(cand2)), names(cand2), unname(cand2))
+cand3 <- cbind.data.frame(rep(3,times=length(cand3)), names(cand3), unname(cand3))
+
+colnames(cand1) <- colnames(cand2) <- colnames(cand3) <- c("axis","TE","loading")
+```
+
+test avec pvalues
+
+```{r}
+cand <- rbind(cand1, cand2, cand3)
+cand$TE <- as.character(cand$TE)
+
+# 3 prédicteurs
+n_pred <- 3
+pred_names <- c("env_PC1", "env_PC2", "env_PC3")
+
+# Matrices pour les résultats
+foo_cor <- matrix(nrow = nrow(cand), ncol = n_pred)
+foo_pval <- matrix(nrow = nrow(cand), ncol = n_pred)
+colnames(foo_cor) <- paste0(pred_names, "_cor")
+colnames(foo_pval) <- paste0(pred_names, "_pval")
+
+envirPC <- rda_env[, 57:59] # trois premiers axes acp envirt
+
+# Boucle sur chaque TE
+for (i in 1:nrow(cand)) {
+  nam <- cand$TE[i]
+  TE.gen <- tab(gen[, nam], NA.method = "mean")[,1]  # vecteur de génotypes
+  
+  for (j in 1:n_pred) {
+    cor_test <- cor.test(envirPC[, j], TE.gen)
+    foo_cor[i, j] <- cor_test$estimate
+    foo_pval[i, j] <- cor_test$p.value
+  }
+}
+
+# Fusion des résultats avec la table 'cand'
+cand <- cbind.data.frame(cand, foo_cor, foo_pval)
+head(cand)
+
+```
+
+Examiner les candidats
+
+Commençons par rechercher les détections de doublons, i.e. les TEs identifiés comme candidats sur plus d'un axe RDA.
+
+```{r}
+length(cand$TE[duplicated(cand$TE)])  # 16 detections de duplication de TE candidats sur plusieurs axes rda
+# combiner
+foo <- cbind(cand$axis, duplicated(cand$TE)) # colonne 1 de foo = axe RDA, colonne 2 de foo = TRUE / FALSE 
+table(foo[foo[,1]==1,2]) # pas de duplicats  axe 1 pour 212 candidats
+table(foo[foo[,1]==2,2]) # 131 uniq aaxe et 5 dupliqués
+table(foo[foo[,1]==3,2]) # 135 uniq aaxe et 11 dupliqués
+
+### enlever les duplications TEs sur mes axes rda
+cand <- cand[!duplicated(cand$TE),] # 478 TE candidats non dupliqués
+```
+
+|           |             |                            |
+|-----------|-------------|----------------------------|
+| Axe RDA   | TEs uniques | TEs dupliqués (multi-axes) |
+| 1         | 212         | 0                          |
+| 2         | 131         | 5                          |
+| 3         | 135         | 11                         |
+| **Total** | **478**     | **16** TEs en doublons     |
+
+Nous avons maintenant réduit le nombre de nos candidats à 478 TEs uniques. Regardons maintenant avec quel prédicteur (axe ACP environnementale) chaque TE candidat est le plus fortement corrélé :
+
+```{r}
+for (i in 1:length(cand$TE)) {
+  bar <- cand[i,]
+  cand[i,10] <- names(which.max(abs(bar[4:6]))) # variable, en val absolue pour avoir la force de corrélation
+  cand[i,11] <- max(abs(bar[4:6]))              # correlation
+}
+
+colnames(cand)[10] <- "predicteur_acp_environnementale"
+colnames(cand)[11] <- "correlation"
+
+table(cand$predicteur_acp_environnementale) 
+```
+
+Sur la base des corrélations les plus fortes, la plupart des TEs sont associés à l'axe 1 d'ACP environnmentale (regroupant les variables climatiques : ...), l'axe 2 représentant le deuxième plus grand nombre de détections (...). Le troisième axe (regroupant les vraiables ...) est lié à 101 détections.
+
+Il convient de noter que, dans certains cas, les corrélations peuvent être fortes pour plusieurs variables (en fonction de la colinéarité entre les prédicteurs). Il peut être utile d'examiner la façon dont les TEs candidats sont corrélés avec des prédicteurs multiples. Nous pourrions, par exemple, examiner l'objet cand et étudier les corrélations avec des prédicteurs autres que le prédicteur ayant le coefficient de corrélation le plus élevé. Cependant, pour cette analyse, nous nous concentrerons sur les corrélations les plus fortes de chaque TEs avec un prédicteur.
+
+**Tracer les TEs :** Examinons à nouveau les graphiques RDA, mais cette fois-ci en nous concentrant sur les TEs dans l'espace d'ordination. Nous allons coder les TEs par couleur en fonction de la variable prédictive avec laquelle ils sont le plus fortement corrélés.
+
+```{r}
+# Sélection des noms de TEs candidats
+sel <- cand$TE  
+
+# Attribution des couleurs aux prédicteurs
+env <- cand$predicteur_acp_environnementale
+env[env == "env_PC1_cor"] <- '#1f78b4'
+env[env == "env_PC2_cor"] <- '#a6cee3'
+env[env == "env_PC3_cor"] <- '#6a3d9a'
+
+# Appliquer les couleurs aux TEs
+col.pred <- rownames(RDAcomplete$CCA$v)  # noms des TEs utilisés dans la RDA
+
+for (i in 1:length(sel)) {
+  foo <- match(sel[i], col.pred)
+  if (!is.na(foo)) col.pred[foo] <- env[i]  # colorie uniquement si match
+}
+
+# Assigner une couleur neutre aux TEs non candidats
+col.pred[!grepl("#", col.pred)] <- '#f1eef6'
+
+# Créer des couleurs transparentes pour les contours
+empty <- col.pred
+empty[grep("#f1eef6", empty)] <- rgb(0, 1, 0, alpha = 0)
+empty.outline <- ifelse(empty == "#00FF0000", "#00FF0000", "gray32")
+
+# Palette utilisée dans la légende
+bg <- c('#1f78b4', '#a6cee3', '#6a3d9a')
+
+# Biplot axes 1 & 2
+plot(RDAcomplete, type = "n", scaling = 3, xlim = c(-1, 1), ylim = c(-1, 1))
+points(RDAcomplete, display = "species", pch = 21, cex = 1, col = "gray32", bg = col.pred, scaling = 3)
+points(RDAcomplete, display = "species", pch = 21, cex = 1, col = empty.outline, bg = empty, scaling = 3)
+text(RDAcomplete, scaling = 3, display = "bp", col = "#0868ac", cex = 1)
+legend("bottomright", legend = c("env_PC1", "env_PC2", "env_PC3"),
+       bty = "n", col = "gray32", pch = 21, pt.bg = bg, cex = 1)
+
+# Biplot axes 1 & 3
+plot(RDAcomplete, type = "n", scaling = 3, xlim = c(-1, 1), ylim = c(-1, 1), choices = c(1, 3))
+points(RDAcomplete, display = "species", pch = 21, cex = 1, col = "gray32", bg = col.pred, scaling = 3, choices = c(1, 3))
+points(RDAcomplete, display = "species", pch = 21, cex = 1, col = empty.outline, bg = empty, scaling = 3, choices = c(1, 3))
+text(RDAcomplete, scaling = 3, display = "bp", col = "#0868ac", cex = 1, choices = c(1, 3))
+legend("bottomright", legend = c("env_PC1", "env_PC2", "env_PC3"),
+       bty = "n", col = "gray32", pch = 21, pt.bg = bg, cex = 1)
+
+```
+
+Relier TEs outliers à leur famille TEs
+
+```{bash}
+# relier au MEI du vcf
+grep -v "^#" test_biallelic_filtered.recode.vcf | cut -f1-6,8 > TE_MEI_info.tsv
+```
+
+```{r}
+# Lire le fichier contenant ID (TE) et INFO
+info <- read.table("~/M2/Cafeier/Codes/Tests_TEs/ACP/TE_MEI_info.tsv", header = FALSE, stringsAsFactors = FALSE, sep = "\t")
+colnames(info) <- c("CHROM", "POS", "ID", "REF", "ALT", "QUAL", "INFO")
+info$MEI <- sub(".*MEI=([^;]+);.*", "\\1", info$INFO)
+
+# Supprimer la fin "_REF_ALT" en coupant au premier "_" après "test_abs" ou "test_ins" dans le nom du TE dans cand :
+cand$TE_base <- sub("^(test_[^_]+_[0-9]+).*", "\\1", cand$TE)
+# idem dans les infos sur mes TEs
+info$TE_base <- sub("^(test_[^_]+_[0-9]+).*", "\\1", info$ID)
+
+#fusion
+cand_full <- merge(cand, info[, c("TE_base", "CHROM", "POS", "MEI")], by = "TE_base", all.x = TRUE)
+
+### Rajouter les familles TEs ###
+# Charger le fichier d'informations sur les éléments transposables
+te_info <- read.table("~/M2/Cafeier/Codes/TEs/annotations_TEs_inpactor.txt", 
+                      header = FALSE, 
+                      col.names = c("MEI", "Type", "Superfamily", "Family", "Line"),
+                      fill= T)
+# J'ai des valeurs RLC/G que je change en Gypsy Copia dans la colonne Superfamily
+te_info$Superfamily[te_info$Superfamily == "RLG"] <- "Gypsy"
+te_info$Superfamily[te_info$Superfamily == "RLC"] <- "Copia"
+# creation dico annotations TEs
+annotations_dict <- list()
+for (i in 1:nrow(te_info)) {
+  mei <- te_info$MEI[i]
+  annotations_dict[[mei]] <- list(
+    Type = te_info$Type[i],
+    Superfamily = te_info$Superfamily[i],
+    Family = te_info$Family[i],
+    Line = te_info$Line[i]
+  )
+}
+# boucle afin d'associer la famille TEs laplus probable lorsqu'ily a plusieur MEI attribué au TE
+# "unique" : un seul MEI (pas de |) ; "identical" : tous les MEI (après filtrage) ont le même Type et Superfamily ;"majority" : un MEI correspondant à la combinaison Type + Superfamily la plus fréquente a été sélectionné ; "fallback" : aucun consensus, donc premier MEI pris malgré tout
+library(stringr)
+library(dplyr)
+
+process_mei <- function(mei_string) {
+  if (!str_detect(mei_string, "\\|")) {
+    return(list(mei = mei_string, keep = TRUE, status = "unique"))
+  }
+
+  meis <- str_split(mei_string, "\\|")[[1]]
+  filtered_meis <- meis  # Ne plus filtrer "Contig"
+
+  annots <- lapply(filtered_meis, function(m) annotations_dict[[m]])
+  annots <- annots[!sapply(annots, is.null)]
+  
+  if (length(annots) == 0) {
+    return(list(mei = filtered_meis[1], keep = TRUE, status = "fallback"))
+  }
+  
+  types <- sapply(annots, `[[`, "Type")
+  superfam <- sapply(annots, `[[`, "Superfamily")
+
+  if (length(unique(types)) == 1 && length(unique(superfam)) == 1) {
+    return(list(mei = filtered_meis[1], keep = TRUE, status = "identical"))
+  }
+
+  maj_type <- names(sort(table(types), decreasing = TRUE))[1]
+  maj_sf <- names(sort(table(superfam), decreasing = TRUE))[1]
+
+  for (m in filtered_meis) {
+    a <- annotations_dict[[m]]
+    if (!is.null(a) && a$Type == maj_type && a$Superfamily == maj_sf) {
+      return(list(mei = m, keep = TRUE, status = "majority"))
+    }
+  }
+
+  return(list(mei = filtered_meis[1], keep = TRUE, status = "fallback"))
+}
+
+
+# boucle pour appliquer ma fonction :
+result_rows <- list()
+
+for (i in 1:nrow(cand_full)) {
+  mei <- cand_full$MEI[i]
+  result <- process_mei(mei)
+  chosen_mei <- result$mei
+  status <- result$status
+
+  new_row <- cand_full[i, ]
+  new_row$MEI_selected <- chosen_mei
+  new_row$annotation_status <- status
+
+  if (!is.null(annotations_dict[[chosen_mei]])) {
+    new_row$Type <- annotations_dict[[chosen_mei]]$Type
+    new_row$Superfamily <- annotations_dict[[chosen_mei]]$Superfamily
+    new_row$Family <- annotations_dict[[chosen_mei]]$Family
+    new_row$Line <- annotations_dict[[chosen_mei]]$Line
+  } else {
+    new_row$Type <- NA
+    new_row$Superfamily <- NA
+    new_row$Family <- NA
+    new_row$Line <- NA
+  }
+
+  result_rows[[i]] <- new_row
+}
+
+# Résultat final
+cand_annotated <- do.call(rbind, result_rows)
+
+```
+
+resumé stat
+
+```{r}
+# Filtrer les TEs significativement associés à au moins un axe
+cand_signif <- cand_annotated[
+  cand_annotated$env_PC1_pval < 0.05 |
+  cand_annotated$env_PC2_pval < 0.05 |
+  cand_annotated$env_PC3_pval < 0.05, ]
+
+# Identifier l'axe significatif principal pour chaque TE
+cand_signif$axe_signif <- apply(cand_signif[, c("env_PC1_pval", "env_PC2_pval", "env_PC3_pval")], 1, function(pvals) {
+  axes <- c("PC1", "PC2", "PC3")
+  pvals[is.na(pvals)] <- 1  # pour éviter les NA
+  axes[which.min(pvals)]
+})
+
+# Compter le nombre de TEs significatifs par Superfamily, Family et Axe
+library(dplyr)
+summary_TE <- cand_signif %>%
+  group_by(Superfamily, Family, axe_signif) %>%
+  summarise(n_TE = n(), .groups = "drop") %>%
+  arrange(desc(n_TE))
+cand_signif
+print(summary_TE)
+
+
+# barplot
+gypsy_summary <- summary_TE %>% filter(Superfamily == "Gypsy")
+copia_summary <- summary_TE %>% filter(Superfamily == "Copia")
+
+library(ggplot2)
+
+# Gypsy
+plot_gypsy <- ggplot(gypsy_summary, aes(x = interaction(Superfamily, Family), y = n_TE, fill = axe_signif)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Nombre de TEs candidats significativement liés aux axes de l'ACP environnementale",subtitle = "Gypsy", x = "Famille (Superfamille)", y = "Nombre de TEs candidats", fill = "Axe significatif") +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_brewer(palette = "Set2")
+
+# Copia
+plot_copia <- ggplot(copia_summary, aes(x = interaction(Superfamily, Family), y = n_TE, fill = axe_signif)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "",subtitle = "Copia", x = "Famille (Superfamille)", y = "Nombre de TEs candidats", fill = "Axe significatif") +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  scale_fill_brewer(palette = "Set2")
+
+library(patchwork)
+plot_gypsy + plot_copia + plot_layout(ncol = 2)
+
+```
+
+**Analyse de sur-représentation via bootstrap** :
+
+je voudrais faire un proxi de ce qui pourrait etre obtenu aleatoirement avec tirage aleatoire par 1000 repetitions de bootstrap afin de savoir si la quantité initiale de TEs par famille influence le nombre de TE outlier par famille TE
+
+Savoir si certaines familles de TEs (ex : Gypsy-TEKAY, Copia-BIANCA...) sont **sur-représentées parmi les TEs candidats outliers** (corrélés significativement à un axe de l'ACP environnementale), **au-delà de ce qu’on attendrait par hasard**, compte tenu de leur abondance dans l'ensemble des TEs.
+
+on veux :\
+Obtenir le **nombre total de TEs par famille TE** (à partir de `recap_data_TEs_genome_recomb_genes_statsPops voir code TE_analyses_genomiques`) ;
+
+Comparer ces totaux à tes TEs "significatifs" résumés dans `summary_TE`, via un **bootstrap** ;
+
+Générer **une distribution empirique du nombre de TEs outliers par famille** sous l'hypothèse d'une sélection aléatoire, pour chaque famille, et comparer cela à tes `n_TE` observés.
+
+```{r}
+# j'ouvre mon doc de mon code analyses_genomiques :3
+recap_data_TEs_genome_recomb_genes_statsPops <- read.table("~/M2/Cafeier/Codes/Matrice_indv/recap_data_TEs_genome_recomb_genes_with_distances_and_freqs_andStatsPops.txt", sep="\t", header=TRUE)
+
+library(dplyr)
+library(tidyr)
+# Étape 1 : créer colonne 'fam'
+TE_fam_total <- recap_data_TEs_genome_recomb_genes_statsPops %>%
+  mutate(fam = paste(Superfamily, Family, sep = "_")) %>%
+  group_by(fam) %>%
+  summarise(total_TE = sum(Count), .groups = "drop")
+
+# jointure pour ajouter total_TE
+summary_TE <- summary_TE %>%
+  mutate(fam = paste(Superfamily, Family, sep = "_")) %>%
+  left_join(TE_fam_total, by = "fam")
+
+
+
+# Charger les librairies nécessaires
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+
+# Jointure des données et calcul de la pondération
+data_joined <- summary_TE %>%
+  #left_join(TE_fam_total, by = "fam") %>%
+  mutate(n_TE_pondere = n_TE / total_TE)
+
+# Séparation des données pour Gypsy et Copia
+gypsy_data <- data_joined %>% filter(Superfamily == "Gypsy")
+copia_data <- data_joined %>% filter(Superfamily == "Copia")
+
+# Création du barplot pour Gypsy
+p_gypsy <- ggplot(gypsy_data, aes(x = interaction(Superfamily, Family), 
+                                  y = n_TE_pondere, fill = axe_signif)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.9)) +
+  #geom_text(aes(label = round(n_TE_pondere, 2)), 
+   #         position = position_dodge(width = 0.9), 
+    #        vjust = -0.5, size = 3) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "Nombre de TEs candidats significativement liés aux axes de l'ACP environnementale",subtitle = "Gypsy", 
+       x = "Family", 
+       y = "Nombre pondérée de TEs candidats", 
+       fill = "Axe\nsignificatif") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "right")
+
+# Création du barplot pour Copia
+p_copia <- ggplot(copia_data, aes(x = interaction(Superfamily, Family), 
+                                  y = n_TE_pondere, fill = axe_signif)) +
+  geom_bar(stat = "identity", position = position_dodge(width = 0.9)) +
+  #geom_text(aes(label = round(n_TE_pondere, 2)), 
+   #         position = position_dodge(width = 0.9), 
+    #        vjust = -0.5, size = 3) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(subtitle = "Copia", 
+       x = "Family", 
+       y = "Nombre pondérée de TEs candidats", 
+       fill = "Axe\nsignificatif") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "right")
+
+# Affichage des deux plots côte à côte
+p_gypsy + p_copia
+
+
+
+
+
+
+
+### BOOTSTRAP SUITE !!!!
+# Étape 2 : création de l'univers de tirage (familles pondérées par total_TE)
+fam_pool <- TE_fam_total %>%
+  uncount(weights = total_TE)
+
+# Étape 3 : Nombre de TEs à tirer par axe
+TEs_par_axe <- summary_TE %>%
+  group_by(axe_signif) %>%
+  summarise(n_TE_axe = sum(n_TE), .groups = "drop")
+
+# Étape 4 : Bootstrap avec stratification par axe
+set.seed(123)
+n_boot <- 1000
+
+bootstrap_all <- list()
+
+for (i in 1:n_boot) {
+  for (j in 1:nrow(TEs_par_axe)) {
+    axe <- TEs_par_axe$axe_signif[j]
+    n <- TEs_par_axe$n_TE_axe[j]
+    
+    sampled <- sample(fam_pool$fam, n, replace = FALSE)
+    sampled_df <- as.data.frame(table(sampled)) %>%
+      rename(fam = sampled, count = Freq) %>%
+      mutate(axe_signif = axe, replicate = i)
+    
+    bootstrap_all[[length(bootstrap_all) + 1]] <- sampled_df
+  }
+}
+
+bootstrap_df <- bind_rows(bootstrap_all)
+
+# Étape 5 : résumé des bootstraps
+bootstrap_summary <- bootstrap_df %>%
+  group_by(fam, axe_signif) %>%
+  summarise(mean = mean(count),
+            sd = sd(count),
+            .groups = "drop")
+
+# Étape 6 : fusion avec les données réelles
+summary_TE_full <- summary_TE %>%
+  select(Superfamily, Family, axe_signif, n_TE, fam) %>%
+  left_join(bootstrap_summary, by = c("fam", "axe_signif")) %>%
+  mutate(z_score = (n_TE - mean) / sd,
+         p_value = 2 * pnorm(-abs(z_score)))
+
+# Résultat final ordonné
+summary_TE_full %>% arrange(p_value)
+
+summary_TE_full <- summary_TE_full %>%
+  left_join(
+    summary_TE %>% select(fam, total_TE = total_TE) %>% distinct(fam, .keep_all = TRUE),
+    by = "fam"
+  )
+summary_TE_full
+write.table(summary_TE_full, "~/M2/Cafeier/Codes/Figures/RDA/recap_TE_candidats_axes_pca_envirt_compa_1000Bootstraps_methode1.txt", row.names = FALSE, col.names = T, quote = FALSE)
+
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+# Préparer les données pour les plots
+# Construire la variable fam_axe dans les deux jeux de données
+summary_TE_plot <- summary_TE_full %>%
+  mutate(fam_axe = paste(fam, axe_signif, sep = "_"))
+
+bootstrap_df_plot <- bootstrap_df %>%
+  mutate(fam_axe = paste(fam, axe_signif, sep = "_")) %>%
+  left_join(summary_TE_plot %>% select(fam, Superfamily) %>% distinct(), by = "fam")
+
+# Liste de fam_axe IVANA à exclure : il n'y a pas de candidats on a que des na
+exclude <- paste0("Copia_IVANA_PC", 1:3)
+
+# Filtrer les données
+summary_TE_plot_filt <- summary_TE_plot %>% filter(!fam_axe %in% exclude)
+bootstrap_df_plot_filt <- bootstrap_df_plot %>% filter(!fam_axe %in% exclude)
+
+# Convertir les p-values en étoiles
+summary_TE_plot_filt <- summary_TE_plot_filt %>%
+  mutate(
+    p_star = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "NS"
+    )
+  )
+
+## SEPARER GYPSY COPIA POUR ECHELLE DIFF
+# Graphique pour Gypsy avec échelle libre
+violinplot_bootstrap_gypsy <- ggplot(bootstrap_df_plot_filt %>% filter(Superfamily == "Gypsy"), aes(x = fam_axe, y = count, fill = axe_signif)) +
+  geom_violin(position = position_dodge(width = 0.8), alpha = 0.7) +
+  geom_point(data = summary_TE_plot_filt %>% filter(Superfamily == "Gypsy"), aes(y = n_TE), color = "darkred", size = 2) +
+  geom_text(
+    data = summary_TE_plot_filt %>% filter(Superfamily == "Gypsy"),
+    aes(y = n_TE + 19, label = p_star),  # Ajuster la hauteur des étoiles ici
+    size = 3.5, color = "black", vjust = 0
+  ) +
+  scale_fill_manual(values = c("PC1" = "lightblue", "PC2" = "orange", "PC3" = "lightgreen")) + # Couleurs par axe
+  theme_minimal(base_size = 13) +
+  labs(
+    title = "Nombre de TEs candidats à l'adaptation par famille TEs et axe de l'ACP environnementale",
+     subtitle="Comparaison à la distribution aléatoire par 1000 répétitions de bootstrap",
+    #subtitle = "Gypsy",
+    x = "Famille TEs", 
+    y = "Nombre de TEs candidats"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold"),
+    legend.position = "none"
+  ) +
+  facet_wrap(~Superfamily, scales = "free_y")  # Échelle indépendante pour l'axe y
+
+# Graphique pour Copia avec échelle libre
+violinplot_bootstrap_copia <- ggplot(bootstrap_df_plot_filt %>% filter(Superfamily == "Copia"), aes(x = fam_axe, y = count, fill = axe_signif)) +
+  geom_violin(position = position_dodge(width = 0.8), alpha = 0.7) +
+  geom_point(data = summary_TE_plot_filt %>% filter(Superfamily == "Copia"), aes(y = n_TE), color = "darkred", size = 2) +
+  geom_text(
+    data = summary_TE_plot_filt %>% filter(Superfamily == "Copia"),
+    aes(y = n_TE + 5, label = p_star),  # Ajuster la hauteur des étoiles ici
+    size = 3.5, color = "black", vjust = 0
+  ) +
+  scale_fill_manual(values = c("PC1" = "lightblue", "PC2" = "orange", "PC3" = "lightgreen")) + # Couleurs par axe
+  theme_minimal(base_size = 13) +
+  labs(
+    title = "Nombre de TEs candidats à l'adaptation par famille TEs et axe de l'ACP environnementale",
+    subtitle="Comparaison à la distribution aléatoire par 1000 répétitions de bootstrap",
+    #subtitle = "Copia",
+    x = "Famille TEs", 
+    y = "Nombre de TEs candidats"
+  ) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(face = "bold"),
+    legend.position = "none"
+  ) +
+  facet_wrap(~Superfamily, scales = "free_y")  # Échelle indépendante pour l'axe y
+
+violinplot_bootstrap_gypsy
+violinplot_bootstrap_copia
+svg("~/M2/Cafeier/Codes/Figures/RDA/violinplot_bootstrap_gypsy.svg", width = 10, height = 7)
+print(violinplot_bootstrap_gypsy)
+dev.off()
+svg("~/M2/Cafeier/Codes/Figures/RDA/violinplot_bootstrap_copia.svg", width = 10, height = 7)
+print(violinplot_bootstrap_copia)
+dev.off()
+```
+
+Relier les TEs candidats aux caractéristiques génomiques, distance aux séquences codantes et taux de recombinaison :
+
+```{r}
+genes_closest_to_TEs_withIndv <- read.table("~/M2/Cafeier/Codes/Matrice_indv/genes_closest_to_TEs_withIndv.txt", header = TRUE)
+# Fusion sur la colonne MEI
+cand_signif_annotated <- merge(
+  cand_signif,
+  genes_closest_to_TEs_withIndv,
+  by.x = "MEI_selected",
+  by.y = "MEI",
+  all.x = TRUE  # pour conserver toutes les lignes de cand_signif
+)
+print(cand_signif_annotated)
+
+library(dplyr)
+summary_cand_signif_annotated <- cand_signif_annotated %>%
+  group_by(Superfamily.x, Family.x, axe_signif) %>%
+  summarise(dist_moy_gene = mean(TE_Gene_distance, na.rm = TRUE),
+            recom_moy = mean(recombination_rate) ,.groups = "drop")
+```
+
+#### Methode 2 : chercher les valeurs extremes en anneau avec la distance de Mahalanobis pour identifier des TEs sous sélection
+
+```{r}
+# trouver outliers
+library(data.table)  # Gestion efficace des grandes tables de données
+library(ggplot2)  # Visualisation des résultats
+library(robust)  # Statistiques robustes (ex : distance de Mahalanobis)
+library(qvalue)  # Contrôle du taux de fausses découvertes (FDR)
+library(psych)  # Analyse multivariée (ex : pairs.panels)
+### methode 1
+
+### methode 2 chercher les valeurs extremes en anneau
+### Mahala distance : Test statistique avec la distance de Mahalanobis pour identifier des TEs sous sélection :
+function_rdadapt<-function(rda,K)
+{
+  loadings<-rda$CCA$v[,1:as.numeric(K)]# cordonnées TEs
+  resscale <- apply(loadings, 2, scale)
+  resmaha <- covRob(resscale, distance = TRUE, na.action= na.omit, estim="pairwiseGK")$dist# calc dist mahanobis
+  lambda <- median(resmaha)/qchisq(0.5, df=K) # evite comportement aberrant des pvalues
+  reschi2test <- pchisq(resmaha/lambda, K, lower.tail=FALSE) # transforme pval
+  qval <- qvalue(reschi2test) # q val assos a pval = proba faux positifs
+  q.values_rdadapt<-qval$qvalues
+  return(data.frame(p.values=reschi2test, q.values=q.values_rdadapt))
+} # p et q value pour faire manhattanplots
+
+### Filtrage des TEs avec p-value < 0.05
+RDA1 <- function_rdadapt(RDAcomplete, 3) # Will output P-values corrected for inflation and qvalues, using the Mahala distance forthe 3 first RDA.
+RDA1 <- as.data.frame(cbind(gen@chromosome,gen@position,RDA1))
+colnames(RDA1)=c("CHR","POSITION","P_val","Q_val")
+RDA1 <- subset(RDA1, RDA1$P_val<0.05)
+
+###  Manhattan plot basé sur la distance de Mahalanobis :
+
+# avec contigs :
+#ggplot(RDA1, aes(x = POSITION, y = -log10(P_val), color = CHR)) +
+#  geom_point() + # Points on the line
+ # facet_wrap(~CHR) +  # Separate chromosomes
+  #labs(title = "Manhattan Plot of RDA results",
+  #     x = "Genomic Position",
+  #     y = "P-value based on Mahalanobis distance") +
+  #scale_color_manual(values = rep(c("black", "blue"),14)) +
+  #heme_minimal() +  theme(legend.position = "none")  # Remove legend for clarity
+
+# idem sans les contigs
+RDA1_chr <- subset(RDA1, grepl("^CC1\\.8\\.Chr", CHR)) # ne garder que les chr
+ggplot(RDA1_chr, aes(x = POSITION, y = -log10(P_val), color = CHR)) +
+  geom_point(size = 0.9) +
+  facet_wrap(~CHR, scales = "free_x") +  # Chaque chromosome a sa propre échelle x
+  labs(title = "Manhattan Plot des résultats RDA sur les TEs",
+       x = "Position sur le chromosome",
+       y = "P-value basées sur la distance de Mahalanobis") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        strip.text = element_text(size = 10),
+        axis.text.x = element_text(angle = 40, vjust = 0.5, hjust=1))
+
+ggplot(RDA1_chr, aes(x = POSITION, y = -log10(P_val), color = CHR)) +
+  geom_point() +
+  facet_wrap(~CHR) +  
+  labs(title = "Manhattan Plot des résultats RDA sur les TEs",
+       x = "Position sur le chromosome",
+       y = "P-value basées sur la distance de Mahalanobis") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        strip.text = element_text(size = 10),
+        axis.text.x = element_text(angle = 40, vjust = 0.5, hjust=1))
+```
+
+code à adapter :3
+
+```{r}
+# Partie 1: Identification des outliers basée sur la fonction function_rdadapt
+# et que gen contient les informations sur vos loci (chromosome, position)
+
+# Calculer les p-values et q-values avec la fonction que vous avez déjà
+RDA_results <- function_rdadapt(RDAcomplete, 3)  # Utilisant 3 axes RDA
+
+# Combiner avec les informations de position
+RDA_results_full <- data.frame(
+  CHR = gen@chromosome,
+  POSITION = gen@position,
+  P_val = RDA_results$p.values,
+  Q_val = RDA_results$q.values
+)
+
+# Identifier les outliers avec différents seuils
+# 1. Basé sur p-value
+outliers_pval_005 <- subset(RDA_results_full, P_val < 0.05)
+outliers_pval_001 <- subset(RDA_results_full, P_val < 0.01)
+
+# 2. Basé sur q-value (contrôle du FDR)
+outliers_qval_005 <- subset(RDA_results_full, Q_val < 0.05)
+outliers_qval_001 <- subset(RDA_results_full, Q_val < 0.01)
+
+# Partie 2: Identifier les top outliers par chromosome (le plus significatif par chromosome)
+# Trier les résultats par chromosome et p-value
+RDA_results_sorted <- RDA_results_full[order(RDA_results_full$CHR, RDA_results_full$P_val),]
+
+# Extraire le top outlier par chromosome
+top_outliers <- RDA_results_sorted[!duplicated(RDA_results_sorted$CHR),]
+
+# Partie 3: Visualisation des outliers
+
+# 1. Manhattan plot amélioré (seulement pour les chromosomes)
+RDA_chr <- subset(RDA_results_full, grepl("^CC1\\.8\\.Chr", CHR))
+
+# Ajouter une colonne indiquant le type d'outlier
+RDA_chr$outlier_type <- "Neutral"
+RDA_chr$outlier_type[RDA_chr$P_val < 0.05] <- "Outlier (p<0.05)"
+RDA_chr$outlier_type[RDA_chr$P_val < 0.01] <- "Strong outlier (p<0.01)"
+RDA_chr$outlier_type[RDA_chr$CHR %in% top_outliers$CHR & 
+                     RDA_chr$POSITION %in% top_outliers$POSITION] <- "Top outlier"
+
+# Convertir en facteur avec les niveaux appropriés
+RDA_chr$outlier_type <- factor(RDA_chr$outlier_type, 
+                              levels = c("Neutral", "Outlier (p<0.05)", 
+                                        "Strong outlier (p<0.01)", "Top outlier"))
+
+# Manhattan plot avec outliers colorés
+ggplot(RDA_chr, aes(x = POSITION, y = -log10(P_val), color = outlier_type)) +
+  geom_point(size = 1.2) +
+  facet_wrap(~CHR, scales = "free_x") +
+  scale_color_manual(values = c("gray80", "#F9A242FF", "#E35932FF", "#6B4596FF")) +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "darkgray") +
+  geom_hline(yintercept = -log10(0.01), linetype = "dotted", color = "darkgray") +
+  labs(title = "Manhattan Plot des résultats RDA sur les TEs",
+       subtitle = "Identification des outliers avec différents seuils de significativité",
+       x = "Position sur le chromosome",
+       y = "-log10(p-value)") +
+  theme_minimal() +
+  theme(legend.title = element_text(size = 10),
+        legend.position = "bottom",
+        strip.text = element_text(size = 10),
+        axis.text.x = element_text(angle = 40, vjust = 0.5, hjust = 1))
+
+# 2. Diagramme de dispersion dans l'espace RDA
+# Extraire les scores des loci (si objet RDAcomplete)
+locus_scores <- scores(RDAcomplete, choices=c(1:2), display="species", scaling="none")
+locus_df <- data.frame(locus_name = rownames(locus_scores), locus_scores)
+
+# Ajouter le type d'outlier
+locus_df$outlier_type <- "Neutral"
+locus_df$outlier_type[locus_df$locus_name %in% outliers_pval_005$locus_name] <- "Outlier (p<0.05)"
+locus_df$outlier_type[locus_df$locus_name %in% outliers_pval_001$locus_name] <- "Strong outlier (p<0.01)"
+locus_df$outlier_type[locus_df$locus_name %in% top_outliers$locus_name] <- "Top outlier"
+
+locus_df$outlier_type <- factor(locus_df$outlier_type, 
+                               levels = c("Neutral", "Outlier (p<0.05)", 
+                                         "Strong outlier (p<0.01)", "Top outlier"))
+
+# Ordonner pour que les outliers apparaissent au-dessus
+locus_df <- locus_df[order(locus_df$outlier_type),]
+
+# Extraire les scores des variables environnementales (si disponibles)
+var_scores <- scores(RDAcomplete, choices=c(1,2), display="bp")
+var_df <- as.data.frame(var_scores)
+
+# Créer le biplot
+ggplot() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray80", size = 0.6) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray80", size = 0.6) +
+  # Loci points
+  geom_point(data = locus_df, aes(x = RDA1*20, y = RDA2*20, color = outlier_type), size = 1.4) +
+  scale_color_manual(values = c("gray80", "#F9A242FF", "#E35932FF", "#6B4596FF")) +
+  # Variables environnementales
+  geom_segment(data = var_df, aes(xend = RDA1, yend = RDA2, x = 0, y = 0), 
+               colour = "black", size = 0.15, arrow = arrow(length = unit(0.02, "npc"))) +
+  geom_text(data = var_df, aes(x = 1.1*RDA1, y = 1.1*RDA2, label = rownames(var_df)), 
+            size = 2.5) +
+  labs(title = "Biplot de l'analyse RDA",
+       subtitle = "Distribution des loci dans l'espace RDA avec identification des outliers",
+       x = "RDA1", y = "RDA2",
+       color = "Type de locus") +
+  theme_bw() +
+  theme(panel.grid = element_blank(), 
+        legend.position = "bottom")
+
+# 3. Exporter la liste des outliers
+#write.csv(outliers_pval_005, "outliers_pval_005.csv", row.names = FALSE)
+#write.csv(outliers_qval_005, "outliers_qval_005.csv", row.names = FALSE)
+#write.csv(top_outliers, "top_outliers_by_chromosome.csv", row.names = FALSE)
+
+# 4. Résumé des outliers
+outlier_summary <- data.frame(
+  Threshold = c("p < 0.05", "p < 0.01", "q < 0.05", "q < 0.01", "Top by chromosome"),
+  Count = c(nrow(outliers_pval_005), 
+            nrow(outliers_pval_001),
+            nrow(outliers_qval_005),
+            nrow(outliers_qval_001),
+            nrow(top_outliers))
+)
+outliers_pval_005
+outliers_qval_005
+top_outliers
+print(outlier_summary)
+```
+
+```{r}
+# Partie 1: Identification des outliers basée sur la fonction function_rdadapt
+
+# Calculer les p-values et q-values avec la fonction que vous avez déjà
+RDA_results <- function_rdadapt(RDAcomplete, 3)  # Utilisant 3 axes RDA
+
+# Extraire les noms des TEs depuis les scores RDA
+load.rda <- scores(RDAcomplete, choices=c(1:3), display="species")
+TE_names <- rownames(load.rda)
+
+# Combiner avec les informations de position et les noms des TEs
+RDA_results_full <- data.frame(
+  TE_name = TE_names,
+  CHR = gen@chromosome,
+  POSITION = gen@position,
+  P_val = RDA_results$p.values,
+  Q_val = RDA_results$q.values
+)
+
+# Identifier les outliers avec différents seuils
+# 1. Basé sur p-value
+outliers_pval_005 <- subset(RDA_results_full, P_val < 0.05)
+outliers_pval_001 <- subset(RDA_results_full, P_val < 0.01)
+
+# 2. Basé sur q-value (contrôle du FDR)
+outliers_qval_005 <- subset(RDA_results_full, Q_val < 0.05)
+outliers_qval_001 <- subset(RDA_results_full, Q_val < 0.01)
+
+# Partie 2: Identifier les top outliers par chromosome (le plus significatif par chromosome)
+# Trier les résultats par chromosome et p-value
+RDA_results_sorted <- RDA_results_full[order(RDA_results_full$CHR, RDA_results_full$P_val),]
+
+# Extraire le top outlier par chromosome
+top_outliers <- RDA_results_sorted[!duplicated(RDA_results_sorted$CHR),]
+
+# Créer une liste des noms des TEs outliers pour référence future
+outliers_TE_names <- outliers_pval_005$TE_name
+top_outliers_TE_names <- top_outliers$TE_name
+
+# Partie 3: Visualisation des outliers
+# 1. Manhattan plot amélioré (seulement pour les chromosomes)
+RDA_chr <- subset(RDA_results_full, grepl("^CC1\\.8\\.Chr", CHR))
+
+# Ajouter une colonne indiquant le type d'outlier
+RDA_chr$outlier_type <- "Neutral"
+RDA_chr$outlier_type[RDA_chr$P_val < 0.05] <- "Outlier (p<0.05)"
+RDA_chr$outlier_type[RDA_chr$P_val < 0.01] <- "Strong outlier (p<0.01)"
+RDA_chr$outlier_type[RDA_chr$CHR %in% top_outliers$CHR & 
+                     RDA_chr$POSITION %in% top_outliers$POSITION] <- "Top outlier"
+
+# Convertir en facteur avec les niveaux appropriés
+RDA_chr$outlier_type <- factor(RDA_chr$outlier_type, 
+                              levels = c("Neutral", "Outlier (p<0.05)", 
+                                        "Strong outlier (p<0.01)", "Top outlier"))
+
+# Manhattan plot avec outliers colorés 
+# qval represente le taux de faux positifs
+ggplot(RDA_chr, aes(x = POSITION, y = -log10(P_val), color = outlier_type)) +
+  geom_point(size = 1.2) +
+  facet_wrap(~CHR, scales = "free_x") +
+  scale_color_manual(values = c("gray80", "#F9A242FF", "#E35932FF", "#6B4596FF")) +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed", color = "darkgray") +
+  geom_hline(yintercept = -log10(0.01), linetype = "dotted", color = "darkgray") +
+  labs(title = "Manhattan Plot des résultats RDA sur les TEs",
+       subtitle = "Identification des outliers avec différents seuils de significativité",
+       x = "Position sur le chromosome",
+       y = "-log10(p-value)") +
+  theme_minimal() +
+  theme(legend.title = element_text(size = 10),
+        legend.position = "bottom",
+        strip.text = element_text(size = 10),
+        axis.text.x = element_text(angle = 40, vjust = 0.5, hjust = 1))
+
+# 2. Diagramme de dispersion dans l'espace RDA
+# Extraire les scores des loci (on utilise les scores déjà calculés)
+locus_scores <- scores(RDAcomplete, choices=c(1:2), display="species", scaling="none")
+locus_df <- data.frame(locus_name = rownames(locus_scores), locus_scores)
+
+# Ajouter le type d'outlier
+locus_df$outlier_type <- "Neutral"
+locus_df$outlier_type[locus_df$locus_name %in% outliers_pval_005$TE_name] <- "Outlier (p<0.05)"
+locus_df$outlier_type[locus_df$locus_name %in% outliers_pval_001$TE_name] <- "Strong outlier (p<0.01)"
+locus_df$outlier_type[locus_df$locus_name %in% top_outliers$TE_name] <- "Top outlier"
+
+locus_df$outlier_type <- factor(locus_df$outlier_type, 
+                               levels = c("Neutral", "Outlier (p<0.05)", 
+                                         "Strong outlier (p<0.01)", "Top outlier"))
+
+# Ordonner pour que les outliers apparaissent au-dessus
+locus_df <- locus_df[order(locus_df$outlier_type),]
+
+# Extraire les scores des variables environnementales (si disponibles)
+var_scores <- scores(RDAcomplete, choices=c(1,2), display="bp")
+var_df <- as.data.frame(var_scores)
+
+# Créer le biplot
+ggplot() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray80", size = 0.6) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray80", size = 0.6) +
+  # Loci points
+  geom_point(data = locus_df, aes(x = RDA1*20, y = RDA2*20, color = outlier_type), size = 1.4) +
+  scale_color_manual(values = c("gray80", "#F9A242FF", "#E35932FF", "#6B4596FF")) +
+  # Variables environnementales
+  geom_segment(data = var_df, aes(xend = RDA1, yend = RDA2, x = 0, y = 0), 
+               colour = "black", size = 0.15, arrow = arrow(length = unit(0.02, "npc"))) +
+  geom_text(data = var_df, aes(x = 1.1*RDA1, y = 1.1*RDA2, label = rownames(var_df)), 
+            size = 2.5) +
+  labs(title = "Biplot de l'analyse RDA",
+       subtitle = "Distribution des loci dans l'espace RDA avec identification des outliers",
+       x = "RDA1", y = "RDA2",
+       color = "Type de locus") +
+  theme_bw() +
+  theme(panel.grid = element_blank(), 
+        legend.position = "bottom")
+
+# 3. Exporter la liste des outliers
+#write.csv(outliers_pval_005, "outliers_pval_005.csv", row.names = FALSE)
+#write.csv(outliers_qval_005, "outliers_qval_005.csv", row.names = FALSE)
+#write.csv(top_outliers, "top_outliers_by_chromosome.csv", row.names = FALSE)
+
+# 4. Résumé des outliers
+outlier_summary <- data.frame(
+  Threshold = c("p < 0.05", "p < 0.01", "q < 0.05", "q < 0.01", "Top by chromosome"),
+  Count = c(nrow(outliers_pval_005), 
+            nrow(outliers_pval_001),
+            nrow(outliers_qval_005),
+            nrow(outliers_qval_001),
+            nrow(top_outliers))
+)
+
+print(outlier_summary)
+outliers_TE_names
+top_outliers_TE_names
+outliers_pval_005
+outliers_qval_005
+top_outliers
+# 5. Exporter les listes de TEs outliers avec leur nom
+#write.table(outliers_TE_names, "outliers_TE_names.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
+#write.table(top_outliers_TE_names, "top_outliers_TE_names.txt"
+
+# 6. Analyser les propriétés des TEs outliers
+
+```

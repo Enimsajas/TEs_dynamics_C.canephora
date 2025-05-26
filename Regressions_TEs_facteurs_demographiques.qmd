@@ -1,0 +1,2677 @@
+---
+title: "Regressions_TEs_facteurs_demographiques"
+format: html
+editor: visual
+---
+
+# teta_div_nuc_paired
+
+## Abondance
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(grid)
+library(viridis)
+
+# Filtrer les données
+recap_data_TEs_genome_recomb_genes_statsPops_sansVhb <- recap_data_TEs_genome_recomb_genes_statsPops %>%
+  filter(!Population_Group %in% c("V", "hb"))
+```
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_abond_teta_div_nuc_paired <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Count, teta_div_nuc_paired, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Count, teta_div_nuc_paired)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_abond_teta_div_nuc_paired <- correlations_abond_teta_div_nuc_paired %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_abond_teta_div_nuc_paired)
+write.table(summary_abond_teta_div_nuc_paired, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_abond_teta_div_nuc_paired.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_abond_teta_div_nuc_paired %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_abond_teta_div_nuc_paired <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = teta_div_nuc_paired, y = Count, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "Teta (div nucléotidique)", 
+    y = "Abondance TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_abond_teta_div_nuc_paired <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = teta_div_nuc_paired, y = Count, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "Teta (div nucléotidique)", 
+    y = "Abondance TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_abondance_diversite.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Abondances des familles TEs en fonction de la diversité nucléotidique des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_abond_teta_div_nuc_paired + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_abond_teta_div_nuc_paired + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+## Ratio
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_ratio_teta_div_nuc_paired <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Ratio, teta_div_nuc_paired, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Ratio, teta_div_nuc_paired)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_ratio_teta_div_nuc_paired <- correlations_ratio_teta_div_nuc_paired %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_ratio_teta_div_nuc_paired)
+write.table(summary_ratio_teta_div_nuc_paired, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_ratio_teta_div_nuc_paired.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_ratio_teta_div_nuc_paired %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_ratio_teta_div_nuc_paired <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = teta_div_nuc_paired, y = Ratio, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "Teta (div nucléotidique)", 
+    y = "Ratio hétorozygotes/homozygotes TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_ratio_teta_div_nuc_paired <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = teta_div_nuc_paired, y = Ratio, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "Teta (div nucléotidique)", 
+    y = "Ratio hétorozygotes/homozygotes TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_ratio_diversite.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Ratio hétorozygotes/homozygotes des familles TEs en fonction de la diversité nucléotidique des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_ratio_teta_div_nuc_paired + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_ratio_teta_div_nuc_paired + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+## Fréquence
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_freq_teta_div_nuc_paired <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Allele_Freq_Pop_Group, teta_div_nuc_paired, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Allele_Freq_Pop_Group, teta_div_nuc_paired)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_freq_teta_div_nuc_paired <- correlations_freq_teta_div_nuc_paired %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_freq_teta_div_nuc_paired)
+write.table(summary_ratio_teta_div_nuc_paired, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_freq_teta_div_nuc_paired.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_freq_teta_div_nuc_paired %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_freq_teta_div_nuc_paired <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = teta_div_nuc_paired, y = Allele_Freq_Pop_Group, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "Teta (div nucléotidique)", 
+    y = "Fréquences TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_freq_teta_div_nuc_paired <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = teta_div_nuc_paired, y = Allele_Freq_Pop_Group, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "Teta (div nucléotidique)", 
+    y = "Fréquences TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_freq_diversite.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Fréquences des familles TEs en fonction de la diversité nucléotidique des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_freq_teta_div_nuc_paired + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_freq_teta_div_nuc_paired + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+# mu_Watterson
+
+## Abondance
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_abond_mu_Watterson <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Count, mu_Watterson, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Count, mu_Watterson)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_abond_mu_Watterson <- correlations_abond_mu_Watterson %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_abond_mu_Watterson)
+write.table(summary_abond_mu_Watterson, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_abond_mu_Watterson.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_abond_mu_Watterson %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_abond_mu_Watterson <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = mu_Watterson, y = Count, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "Taux de mutation", 
+    y = "Abondance TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_abond_mu_Watterson <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = mu_Watterson, y = Count, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "Taux de mutation", 
+    y = "Abondance TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_abondance_mu_Watterson.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Abondances des familles TEs en fonction du taux de mutation des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_abond_mu_Watterson + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_abond_mu_Watterson + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+## Ratio
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_ratio_mu_Watterson <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Ratio, mu_Watterson, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Ratio, mu_Watterson)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_ratio_mu_Watterson <- correlations_ratio_mu_Watterson %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_ratio_mu_Watterson)
+write.table(summary_ratio_mu_Watterson, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_ratio_mu_Watterson.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_ratio_mu_Watterson %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_ratio_mu_Watterson <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = mu_Watterson, y = Ratio, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "Taux de mutation", 
+    y = "Ratio hétorozygotes/homozygotes TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_ratio_mu_Watterson <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = mu_Watterson, y = Ratio, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "Taux de mutation", 
+    y = "Ratio hétorozygotes/homozygotes TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_ratio_taux_mutation.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Ratio hétorozygotes/homozygotes des familles TEs en fonction du taux de mutation des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_ratio_mu_Watterson + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_ratio_mu_Watterson + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+## Fréquence
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_freq_mu_Watterson <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Allele_Freq_Pop_Group, mu_Watterson, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Allele_Freq_Pop_Group, mu_Watterson)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_freq_mu_Watterson <- correlations_freq_mu_Watterson %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_freq_mu_Watterson)
+write.table(summary_ratio_mu_Watterson, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_freq_mu_Watterson.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_freq_mu_Watterson %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_freq_mu_Watterson <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = mu_Watterson, y = Allele_Freq_Pop_Group, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "Taux de mutation", 
+    y = "Fréquence TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_freq_mu_Watterson <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = mu_Watterson, y = Allele_Freq_Pop_Group, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "Taux de mutation", 
+    y = "Fréquences TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_freq_mu_Watterson.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Fréquences des familles TEs en fonction du taux de mutation des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_freq_mu_Watterson + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_freq_mu_Watterson + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+# Ho
+
+## Abondance
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_abond_Observed_heterozygosity <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Count, Observed_heterozygosity, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Count, Observed_heterozygosity)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_abond_Observed_heterozygosity <- correlations_abond_Observed_heterozygosity %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_abond_Observed_heterozygosity)
+write.table(summary_abond_Observed_heterozygosity, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_abond_Observed_heterozygosity.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_abond_Observed_heterozygosity %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_abond_Observed_heterozygosity <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = Observed_heterozygosity, y = Count, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "Ho - Hétérozygotie observée", 
+    y = "Abondance TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_abond_Observed_heterozygosity <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = Observed_heterozygosity, y = Count, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "Ho - Hétérozygotie observée", 
+    y = "Abondance TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_abondance_Ho.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Abondances des familles TEs en fonction de l'hétérozygotie observée des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_abond_Observed_heterozygosity + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_abond_Observed_heterozygosity + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+## Ratio
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_ratio_Observed_heterozygosity <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Ratio, Observed_heterozygosity, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Ratio, Observed_heterozygosity)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_ratio_Observed_heterozygosity <- correlations_ratio_Observed_heterozygosity %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_ratio_Observed_heterozygosity)
+write.table(summary_ratio_Observed_heterozygosity, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_ratio_Observed_heterozygosity.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_ratio_Observed_heterozygosity %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_ratio_Observed_heterozygosity <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = Observed_heterozygosity, y = Ratio, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "Ho - Hétérozygotie observée", 
+    y = "Ratio hétorozygotes/homozygotes TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_ratio_Observed_heterozygosity <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = Observed_heterozygosity, y = Ratio, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "Ho - Hétérozygotie observée", 
+    y = "Ratio hétorozygotes/homozygotes TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_ratio_Ho.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Ratio hétorozygotes/homozygotes des familles TEs en fonction de l'hétérozygotie observée des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_ratio_Observed_heterozygosity + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_ratio_Observed_heterozygosity + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+## Fréquence
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_freq_Observed_heterozygosity <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Allele_Freq_Pop_Group, Observed_heterozygosity, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Allele_Freq_Pop_Group, Observed_heterozygosity)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_freq_Observed_heterozygosity <- correlations_freq_Observed_heterozygosity %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_freq_Observed_heterozygosity)
+write.table(summary_ratio_Observed_heterozygosity, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_freq_Observed_heterozygosity.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_freq_Observed_heterozygosity %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_freq_Observed_heterozygosity <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = Observed_heterozygosity, y = Allele_Freq_Pop_Group, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "Ho - Hétérozygotie observée", 
+    y = "Fréquence TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_freq_Observed_heterozygosity <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = Observed_heterozygosity, y = Allele_Freq_Pop_Group, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "Ho - Hétérozygotie observée", 
+    y = "Fréquences TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_freq_Observed_heterozygosity.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Fréquences des familles TEs en fonction de l'hétérozygotie observée des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_freq_Observed_heterozygosity + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_freq_Observed_heterozygosity + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+# Dtaj
+
+## Abondance
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_abond_Tajima_D <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Count, Tajima_D, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Count, Tajima_D)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_abond_Tajima_D <- correlations_abond_Tajima_D %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_abond_Tajima_D)
+write.table(summary_abond_Tajima_D, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_abond_Tajima_D.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_abond_Tajima_D %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_abond_Tajima_D <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = Tajima_D, y = Count, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "D de Tajima", 
+    y = "Abondance TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_abond_Tajima_D <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = Tajima_D, y = Count, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "D de Tajima", 
+    y = "Abondance TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_abondance_DTajima.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Abondances des familles TEs en fonction du D de Tajima des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_abond_Tajima_D + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_abond_Tajima_D + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+## Ratio
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_ratio_Tajima_D <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Ratio, Tajima_D, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Ratio, Tajima_D)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_ratio_Tajima_D <- correlations_ratio_Tajima_D %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_ratio_Tajima_D)
+write.table(summary_ratio_Tajima_D, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_ratio_Tajima_D.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_ratio_Tajima_D %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_ratio_Tajima_D <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = Tajima_D, y = Ratio, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "D de Tajima", 
+    y = "Ratio hétorozygotes/homozygotes TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_ratio_Tajima_D <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = Tajima_D, y = Ratio, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "D de Tajima", 
+    y = "Ratio hétorozygotes/homozygotes TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_ratio_Dtaj.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Ratio hétorozygotes/homozygotes des familles TEs en fonction du D de Tajima des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_ratio_Tajima_D + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_ratio_Tajima_D + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+## Fréquence
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_freq_Tajima_D <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Allele_Freq_Pop_Group, Tajima_D, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Allele_Freq_Pop_Group, Tajima_D)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_freq_Tajima_D <- correlations_freq_Tajima_D %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_freq_Tajima_D)
+write.table(summary_ratio_Tajima_D, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_freq_Tajima_D.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_freq_Tajima_D %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_freq_Tajima_D <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = Tajima_D, y = Allele_Freq_Pop_Group, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "D de Tajima", 
+    y = "Fréquence TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_freq_Tajima_D <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = Tajima_D, y = Allele_Freq_Pop_Group, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "D de Tajima", 
+    y = "Fréquences TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_freq_Tajima_D.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Fréquences des familles TEs en fonction du D de Tajima des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_freq_Tajima_D + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_freq_Tajima_D + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+# Fay & Wu's H
+
+**Fay & Wu’s H** est une statistique de test de neutralité utilisée en génétique des populations. Elle permet de détecter des signes de sélection positive (notamment des balayages sélectifs) en comparant les fréquences des mutations à haute fréquence par rapport aux attentes sous la neutralité.
+
+définie comme :
+
+𝐻=𝜋−𝜃
+
+π (pi) : diversité nucléotidique moyenne par paire de séquences.
+
+θₕ (theta_H) : une estimation de la diversité qui donne plus de poids aux mutations dérivées à haute fréquence.
+
+Si des mutations dérivées à haute fréquence sont plus fréquentes que prévu (ce qui peut arriver après un balayage sélectif), alors θₕ \> π → donc H est négatif.
+
+Donc :
+
+H \< 0 → signature possible de sélection positive récente.
+
+H \> 0 → excès de mutations à faible fréquence, souvent après expansion de population
+
+## Abondance
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_abond_Fay_Wu_H <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Count, Fay_Wu_H, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Count, Fay_Wu_H)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_abond_Fay_Wu_H <- correlations_abond_Fay_Wu_H %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_abond_Fay_Wu_H)
+write.table(summary_abond_Fay_Wu_H, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_abond_Fay_Wu_H.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_abond_Fay_Wu_H %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_abond_Fay_Wu_H <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = Fay_Wu_H, y = Count, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "H de Fay & Wu", 
+    y = "Abondance TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_abond_Fay_Wu_H <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = Fay_Wu_H, y = Count, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "H de Fay & Wu", 
+    y = "Abondance TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_abondance_H_Fay_Wu.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Abondances des familles TEs en fonction du H de Fay & Wu des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_abond_Fay_Wu_H + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_abond_Fay_Wu_H + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+## Ratio
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_ratio_Fay_Wu_H <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Ratio, Fay_Wu_H, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Ratio, Fay_Wu_H)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_ratio_Fay_Wu_H <- correlations_ratio_Fay_Wu_H %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_ratio_Fay_Wu_H)
+write.table(summary_ratio_Fay_Wu_H, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_ratio_Fay_Wu_H.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_ratio_Fay_Wu_H %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_ratio_Fay_Wu_H <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = Fay_Wu_H, y = Ratio, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "H de Fay & Wu", 
+    y = "Ratio hétorozygotes/homozygotes TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_ratio_Fay_Wu_H <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = Fay_Wu_H, y = Ratio, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "H de Fay & Wu", 
+    y = "Ratio hétorozygotes/homozygotes TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_ratio_H_Fay_Wu.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Ratio hétorozygotes/homozygotes des familles TEs en fonction du H de Fay & Wu des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_ratio_Fay_Wu_H + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_ratio_Fay_Wu_H + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+## Fréquence
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_freq_Fay_Wu_H <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Allele_Freq_Pop_Group, Fay_Wu_H, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Allele_Freq_Pop_Group, Fay_Wu_H)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_freq_Fay_Wu_H <- correlations_freq_Fay_Wu_H %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_freq_Fay_Wu_H)
+write.table(summary_ratio_Fay_Wu_H, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_freq_Fay_Wu_H.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_freq_Fay_Wu_H %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_freq_Fay_Wu_H <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = Fay_Wu_H, y = Allele_Freq_Pop_Group, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "H de Fay & Wu", 
+    y = "Fréquence TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_freq_Fay_Wu_H <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = Fay_Wu_H, y = Allele_Freq_Pop_Group, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "H de Fay & Wu", 
+    y = "Fréquences TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_freq_Fay_Wu_H.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Fréquences des familles TEs en fonction du H de Fay & Wu des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_freq_Fay_Wu_H + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_freq_Fay_Wu_H + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+# LD decay
+
+la **non-indépendance des allèles** à deux loci (**déséquilibre de liaison**) décrit **comment le lien génétique entre deux loci diminue avec la distance physique qui les sépare sur un chromosome**.
+
+## Abondance
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_abond_Lddecay <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Count, Lddecay, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Count, Lddecay)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_abond_Lddecay <- correlations_abond_Lddecay %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_abond_Lddecay)
+write.table(summary_abond_Lddecay, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_abond_Lddecay.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_abond_Lddecay %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_abond_Lddecay <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = Lddecay, y = Count, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "Déséquilibre de liaison", 
+    y = "Abondance TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_abond_Lddecay <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = Lddecay, y = Count, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "Déséquilibre de liaison", 
+    y = "Abondance TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_abondance_LDdecay.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Abondances des familles TEs en fonction du déséquilibre de liaison des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_abond_Lddecay + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_abond_Lddecay + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+## Ratio
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_ratio_Lddecay <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Ratio, Lddecay, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Ratio, Lddecay)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_ratio_Lddecay <- correlations_ratio_Lddecay %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_ratio_Lddecay)
+write.table(summary_ratio_Lddecay, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_ratio_Lddecay.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_ratio_Lddecay %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_ratio_Lddecay <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = Lddecay, y = Ratio, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "Déséquilibre de liaison", 
+    y = "Ratio hétorozygotes/homozygotes TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_ratio_Lddecay <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = Lddecay, y = Ratio, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "Déséquilibre de liaison", 
+    y = "Ratio hétorozygotes/homozygotes TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_ratio_H_Fay_Wu.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Ratio hétorozygotes/homozygotes des familles TEs en fonction du déséquilibre de liaison des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_ratio_Lddecay + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_ratio_Lddecay + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+## Fréquence
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_freq_Lddecay <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Allele_Freq_Pop_Group, Lddecay, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Allele_Freq_Pop_Group, Lddecay)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_freq_Lddecay <- correlations_freq_Lddecay %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_freq_Lddecay)
+write.table(summary_ratio_Lddecay, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_freq_Lddecay.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_freq_Lddecay %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_freq_Lddecay <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = Lddecay, y = Allele_Freq_Pop_Group, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "Déséquilibre de liaison", 
+    y = "Fréquence TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_freq_Lddecay <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = Lddecay, y = Allele_Freq_Pop_Group, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "Déséquilibre de liaison", 
+    y = "Fréquences TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_freq_Lddecay.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Fréquences des familles TEs en fonction du déséquilibre de liaison des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_freq_Lddecay + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_freq_Lddecay + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+# Rho taux de recombinaison par site
+
+taux de recombinaison par site ρ = 4 Nₑ r
+
+Nₑ : taille effective de la population
+
+r : taux de recombinaison par site (par génération)
+
+C’est l’analogue de θ = 4 Nₑ μ, où μ est le taux de mutation
+
+## Abondance
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_abond_rho <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Count, rho, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Count, rho)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_abond_rho <- correlations_abond_rho %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_abond_rho)
+write.table(summary_abond_rho, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_abond_rho.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_abond_rho %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_abond_rho <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = rho, y = Count, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "Taux de recombinaison", 
+    y = "Abondance TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_abond_rho <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = rho, y = Count, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "Taux de recombinaison", 
+    y = "Abondance TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_abondance_rho.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Abondances des familles TEs en fonction du taux de recombinaison des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_abond_rho + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_abond_rho + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+## Ratio
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_ratio_rho <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Ratio, rho, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Ratio, rho)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_ratio_rho <- correlations_ratio_rho %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_ratio_rho)
+write.table(summary_ratio_rho, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_ratio_rho.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_ratio_rho %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_ratio_rho <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = rho, y = Ratio, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "Taux de recombinaison", 
+    y = "Ratio hétorozygotes/homozygotes TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_ratio_rho <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = rho, y = Ratio, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "Taux de recombinaison", 
+    y = "Ratio hétorozygotes/homozygotes TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_ratio_rho.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Ratio hétorozygotes/homozygotes des familles TEs en fonction du taux de recombinaison des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_ratio_rho + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_ratio_rho + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+## Fréquence
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_freq_rho <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Allele_Freq_Pop_Group, rho, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Allele_Freq_Pop_Group, rho)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_freq_rho <- correlations_freq_rho %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_freq_rho)
+write.table(summary_ratio_rho, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_freq_rho.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_freq_rho %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_freq_rho <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = rho, y = Allele_Freq_Pop_Group, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "Taux de recombinaison", 
+    y = "Fréquence TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_freq_rho <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = rho, y = Allele_Freq_Pop_Group, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "Taux de recombinaison", 
+    y = "Fréquences TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_freq_rho.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Fréquences des familles TEs en fonction du taux de recombinaison des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_freq_rho + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_freq_rho + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+# Mu/Rho
+
+## Abondance
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_abond_mu_sur_rho <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Count, mu_sur_rho, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Count, mu_sur_rho)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_abond_mu_sur_rho <- correlations_abond_mu_sur_rho %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_abond_mu_sur_rho)
+write.table(summary_abond_mu_sur_rho, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_abond_mu_sur_rho.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_abond_mu_sur_rho %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_abond_mu_sur_rho <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = mu_sur_rho, y = Count, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "Taux de mutation / Taux de recombinaison", 
+    y = "Abondance TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_abond_mu_sur_rho <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = mu_sur_rho, y = Count, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "Taux de mutation / Taux de recombinaison", 
+    y = "Abondance TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_abondance_mu_sur_rho.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Abondances des familles TEs en fonction du ratio taux de mutation sur taux de recombinaison des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_abond_mu_sur_rho + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_abond_mu_sur_rho + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+## Ratio
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_ratio_mu_sur_rho <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Ratio, mu_sur_rho, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Ratio, mu_sur_rho)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_ratio_mu_sur_rho <- correlations_ratio_mu_sur_rho %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_ratio_mu_sur_rho)
+write.table(summary_ratio_mu_sur_rho, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_ratio_mu_sur_rho.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_ratio_mu_sur_rho %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_ratio_mu_sur_rho <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = mu_sur_rho, y = Ratio, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "Taux de mutation / Taux de recombinaison", 
+    y = "Ratio hétorozygotes/homozygotes TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_ratio_mu_sur_rho <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = mu_sur_rho, y = Ratio, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "Taux de mutation / Taux de recombinaison", 
+    y = "Ratio hétorozygotes/homozygotes TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_ratio_mu_sur_rho.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Ratio hétorozygotes/homozygotes des familles TEs en fonction du ratio taux de mutation sur taux de recombinaison des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_ratio_mu_sur_rho + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_ratio_mu_sur_rho + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```
+
+## Fréquence
+
+```{r}
+# Calculer les corrélations pour chaque famille
+correlations_freq_mu_sur_rho <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Allele_Freq_Pop_Group, mu_sur_rho, method = "pearson", use = "complete.obs"),
+    p_value = cor.test(Allele_Freq_Pop_Group, mu_sur_rho)$p.value,
+    n = n(),
+    .groups = "drop"
+  )
+# Afficher un tableau récapitulatif des corrélations
+summary_freq_mu_sur_rho <- correlations_freq_mu_sur_rho %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_freq_mu_sur_rho)
+write.table(summary_ratio_mu_sur_rho, 
+          "~/M2/Cafeier/Codes/Figures/Regression_demographie/summary_freq_mu_sur_rho.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Créer les annotations à afficher
+annotation_data <- correlations_freq_mu_sur_rho %>%
+  mutate(
+    significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE ~ "ns"
+    ),
+    label = paste0("r = ", round(correlation, 2), " ", significance,
+                   "\n", 
+                   ifelse(p_value < 0.001, "p < 0.001", paste0("p = ", round(p_value, 3)))),
+    x = Inf,
+    y = Inf
+  )
+
+# Séparer pour chaque superfamille
+annotation_gypsy <- annotation_data %>% filter(Superfamily == "Gypsy")
+annotation_copia <- annotation_data %>% filter(Superfamily == "Copia")
+
+# Gypsy
+gypsy_plot_freq_mu_sur_rho <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = mu_sur_rho, y = Allele_Freq_Pop_Group, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_gypsy, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Gypsy",
+    x = "Taux de mutation / Taux de recombinaison", 
+    y = "Fréquence TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "plasma")
+
+# Copia
+copia_plot_freq_mu_sur_rho <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = mu_sur_rho, y = Allele_Freq_Pop_Group, color = Family)) +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  geom_text(data = annotation_copia, aes(x = x, y = y, label = label),
+            hjust = 1.1, vjust = 1.1, inherit.aes = FALSE, size = 3) +
+  labs(
+    title = "Copia",
+    x = "Taux de mutation / Taux de recombinaison", 
+    y = "Fréquences TEs"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d(option = "viridis")
+
+# Créer un fichier PNG (ajuste la taille si besoin)
+png("~/M2/Cafeier/Codes/Figures/Regression_demographie/TEs_freq_mu_sur_rho.png", width = 5000, height = 1700, res = 300)
+
+# Générer le graphique combiné
+grid.arrange(
+  textGrob("Fréquences des familles TEs en fonction du ratio taux de mutation sur taux de recombinaison des groupes génétiques de caféiers robusta",
+           gp = gpar(fontsize = 16, fontface = "bold")),
+  arrangeGrob(
+    arrangeGrob(textGrob("Gypsy", gp = gpar(fontsize = 12, fontface = "italic")),
+                gypsy_plot_freq_mu_sur_rho + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    arrangeGrob(textGrob("Copia", gp = gpar(fontsize = 12, fontface = "italic")),
+                copia_plot_freq_mu_sur_rho + labs(title = NULL),
+                ncol = 1, heights = c(0.1, 1)),
+    ncol = 2
+  ),
+  nrow = 2,
+  heights = c(0.1, 1)
+)
+
+# Fermer le fichier PNG
+dev.off()
+```

@@ -1,0 +1,3416 @@
+---
+title: "TEs_analyses_genomiques"
+format: html
+editor: visual
+---
+
+# Analyses génomiques
+
+## Densité en gènes et TEs
+
+### bcftools closest
+
+J'ai le fichier des genes en format gff3 /shared/projects/te_coffea/Data_geo_coffea/CC1.8_v2_named_annotation_0.5_BTI.gff3 : "ID" "source" ""type""start""end""score""strand""phase""attributes"
+
+Contig1647 maker gene 17626 19047 . + . ID=Ccan1647g005010;Name=Ccan1647g005010;
+
+Contig1647 maker mRNA 17626 19047 . + . ID=Ccan1647g005010.1;Parent=Ccan1647g005010;Name=Ccan1647g005010.1;\_AED=0.28;\_eAED=0.28;\_QI=0\|-1\|0\|1\|-1\|1\|1\|0\|473;
+
+Contig1647 maker exon 17626 19047 . + . ID=Ccan1647g005010:exon:1;Parent=Ccan1647g005010.1;
+
+Contig1647 maker CDS 17626 19047 . + 0 ID=Ccan1647g005010:cds:1;Parent=Ccan1647g005010.1;
+
+Ainsi que mon vcf avec mes TEs (combinaison MEI et MEA) : grep -v "\#" /shared/projects/te_coffea/vcf_for_phasing/test_biallelic.vcf CHROM POS ID REF ALT QUAL FILTER INFO FORMAT 20135-NoIndex-L003-MERGED 20159-NoIndex-L0 05-MERGED 20511_NoIndex_L001-MERGED 20650-NoIndex-L007-MERGED 20658-NoIndex-L002-MERGED 20708-No Index-L008-MERGED 20723-NoIndex-L007-MERGED 20731-NoIndex-L002-MERGED C-127 C-133 C-147 C001-MER GED C002-MERGED C003-MERGED C004-MERGED C005-MERGED C006-MERGED C007-MERGED C008-MERGED C009-MERGED C010-MERGED C011-MERGED C012-MERGED C013-MERGED C014-MERGED C016-MERGED C017-MER GED C018-MERGED C019-MERGED C020-MERGED C021-MERGED C022-MERGED C023-MERGED C025-MERGED C026-MERGED C027-MERGED C029-MERGED C030-MERGED C031-MERGED C032-MERGED C033-MERGED C034-MER GED C035-MERGED C037-MERGED C038-MERGED C039-MERGED C040-MERGED C041-MERGED C042-MERGED C044-MERGED C045-MERGED C047-MERGED C403-Boim7-2LanesMerged C404-Briz2-2LanesMerged D-7 D-8 E1000328 97_L1_COFtwpgR108321-704 E100032897_L1_COFtwpgR108322-705 E100032897_L1_COFtwpgR108323-706 E1000330 56_L1_COFpytlR112806-724 E100033056_L1_COFpytlR112807-726 E100033056_L1_COFpytlR112808-728 E100033056_L1_COFpytlR112809-729 E100033056_L1_COFpytlR112810-730 E100033056_L1_COFpytlR112811-731 E100033056_L1_COFpytlR112812-733 E100033056_L1_COFpytlR112813-734 E100033056_L1_COFpytlR112814-735 E100033056_L1_COFpytlR112815-736 E100033056_L1_COFpytlR112816-737 E100033056_L1_COFpytlR112817-738 E100033056_L1_COFpytlR112818-739 E100033056_L1_COFpytlR112819-740 E100033056_L1_COFpytlR112820-741 E100033056_L1_COFpytlR112821-742 E100033056_L1_COFpytlR112822-743 E100033056_L1_COFpytlR112823-744 E100033056_L1_COFpytlR112824-746 E100033056_L1_COFpytlR112825-747 E100033056_L1_COFpytlR112826-748 E100033056_L1_COFpytlR112827-749 E100033056_L1_COFpytlR112828-750 E100033056_L1_COFpytlR112829-751 E100033056_L1_COFpytlR112830-752 E100033056_L1_COFpytlR112831-753 E100033056_L1_COFpytlR112832-754 E100033056_L1_COFpytlR112833-755 E100033056_L1_COFpytlR112834-756 E100033056_L1_COFpytlR112835-757 E100033914_L1_COFphndR129154-638 E100033914_L1_COFphndR129155-639 J-18 J-2 J-22 J-30 J-9 K4Y17Y2-NoIndex-L002-MERGED M1 M2 M3 M4 N-11 N-37 N-38 N-39 N-42 N-5 S-152 S-157 TR10m TR11m TR12m TR13m TR14m TR15m TR4m TR5m TR6m TR9m ZO16
+
+CC1.8.Chr01 47943685 test_ins_0 TTGTAGTCCAGCTAAACTATATACTATAGGAATATAG <INS:ME> . LC;M SVTYPE=DNA;MEI=TE_00002498;MEPRED=PASS;0START=47943685;0END=47943721;SVLEN=595;MESTRAND=-;AC=13 GT 0/0 0/0 0/0 0/0 0/0 0/. 0/. 0/1 0/0 0/1 0/1 0/0 0/0 0/0 0/0 0/. 0/0 1/1 0/0 0/0 0/0 0/. 0/. 0/. 0/0 0/0 0/0 0/0 0/. 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/. 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/. 0/0 0/0 0/0 0/. 0/0 0/0 0/0 0/0 0/0 0/0 0/. 0/0 0/1 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/. 0/. 0/. 0/1 0/. 0/. 0/. 0/0 0/. 0/0 0/0 0/0 0/. 0/0 0/0 0/0 0/0 0/0 0/1 0/0 0/0 0/0 0/0 0/0 0/0 0/. 0/0 0/0 0/0 0/0 0/0 0/. 0/0 0/0 0/. 0/0 0/1 0/. 0/0 0/. 0/. 0/0 0/0 0/. 0/1 0/0 0/0 0/0 0/0 0/. 0/1 0/1 0/1 0/0 CC1.8.Chr02 5109069 test_ins_1 TATATATATATATATATATATATATATATATATATATTTATTTATT <INS:ME> . LC;M SVTYPE=DNA;MEI=TE_00002498;MEPRED=PASS;0START=5109069;0END=5109114;SVLEN=NA;MESTRAND=+;AC=11 GT 0/. 0/0 0/0 0/. 0/. 0/0 0/0 0/. 0/0 0/. 0/0 0/. 0/1 0/1 0/. 0/. 0/. 0/. 0/. 0/0 0/. 0/. 0/. 0/0 0/. 0/. 0/. 0/0 0/. 0/0 0/1 0/. 0/. 0/. 0/. 0/1 0/. 0/. 0/0 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/1 0/. 0/1 0/0 0/0 0/1 0/. 0/1 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/1 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/1 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/0 0/. 0/0 0/0 0/0 0/0 0/. 0/1 0/. 0/. 0/. 0/. 0/0 0/. 0/. 0/0 0/0 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/. 0/0 CC1.8.Chr03 7909366 test_ins_2 TGTTAAA <INS:ME> . PASS SVTYPE=DNA;MEI=TE_00002498;MEPRED=PASS;0START=7909366;0END=7909372;SVLEN=596;MESTRAND=-;AC=2 GT 0/. 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/. 0/0 0/0 0/0 0/0 1/1 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0
+
+```{bash}
+### dans /shared/projects/te_coffea/Tests_TEs/Genes_TEs/Closest :
+
+# Extraire les gènes et exons du fichier GFF3
+awk '($3 == "gene" || $3 == "exon") && $1 ~ /^CC1\.8\.Chr0[1-9]$|^CC1\.8\.Chr1[01]$/' /shared/projects/te_coffea/Data_geo_coffea/CC1.8_v2_named_annotation_0.5_BTI.gff3 | sort -k1,1 -k4,4n > genes_exons.gff
+
+# ou fichiers distincts
+awk '$3 == "gene" && $1 ~ /^CC1\.8\.Chr0[1-9]$|^CC1\.8\.Chr1[01]$/' /shared/projects/te_coffea/Data_geo_coffea/CC1.8_v2_named_annotation_0.5_BTI.gff3 | sort -k1,1 -k4,4n > genes.gff
+awk '$3 == "exon" && $1 ~ /^CC1\.8\.Chr0[1-9]$|^CC1\.8\.Chr1[01]$/' /shared/projects/te_coffea/Data_geo_coffea/CC1.8_v2_named_annotation_0.5_BTI.gff3 | sort -k1,1 -k4,4n > exons.gff
+
+# Convertir le VCF en BED (colonnes: chromosome, start, end, ID, score, strand) et je filtre pour ne garder que les data "PASS" 
+grep -v "#" /shared/projects/te_coffea/vcf_for_phasing/test_biallelic.vcf | \
+awk '($7=="PASS" || $7==".") && $1 ~ /^CC1\.8\.Chr0[1-9]$|^CC1\.8\.Chr1[01]$/ {
+  start=$2-1; 
+  match($8, /SVLEN=([0-9]+)/, a); 
+  end=$2+(a[1]?a[1]:1); 
+  match($8, /MESTRAND=([-+])/, b); 
+  strand=(b[1]?b[1]:"."); 
+  match($8, /MEI=([^;]+)/, c);
+  mei=(c[1]?c[1]:"Unknown");
+  print $1"\t"start"\t"end"\t"$3"\t.\t"strand"\t"mei
+}'  | sort -k1,1 -k2,2n > TEs.bed
+
+
+module load bedtools/2.31.1
+# Pour trouver les TEs les plus proches des gènes, avec -d on a la distance entre chaque caractéristique et son voisin le plus proche. S'ils se chevauchent, la distance = 0
+bedtools closest -a genes_exons.gff -b TEs.bed -d > TEs_closest_to_genes.txt
+bedtools closest -a TEs.bed -b genes_exons.gff -d > genes_closest_to_TEs.txt
+
+# Pour trouver les TEs qui chevauchent les gènes, -wa -wb affichera les lignes des deux fichiers d'entrée pour les caractéristiques qui se chevauchent.
+bedtools intersect -a genes_exons.gff -b TEs.bed -wa -wb > TEs_overlapping_genes.txt
+bedtools intersect -a TEs.bed -b genes_exons.gff -wa -wb > genes_overlapping_TEs.txt
+```
+
+j'obtiens : head genes_exons.gff CC1.8.Chr01 maker exon 45259 46932 . - . ID=Ccan001g005000:exon:1;Parent=Ccan001g005000.1; CC1.8.Chr01 maker gene 45259 46932 . - . ID=Ccan001g005000;Name=Ccan001g005000; CC1.8.Chr01 maker exon 50006 50155 . - . ID=Ccan001g005010:exon:1;Parent=Ccan001g005010.1; CC1.8.Chr01 maker gene 50006 57629 . - . ID=Ccan001g005010;Name=Ccan001g005010; CC1.8.Chr01 maker exon 50263 50502 . - . ID=Ccan001g005010:exon:2;Parent=Ccan001g005010.1;
+
+head TEs.bed CC1.8.Chr01 5894 10193 test_ins_18 . + CC1.8.Chr03_27558004_27574509 CC1.8.Chr01 6112 6936 test_ins_19 . - CC1.8.Chr06_27860847_27874062 CC1.8.Chr01 7733 7735 test_ins_20 . . CC1.8.Chr04_31472507_31484189 CC1.8.Chr01 8836 8838 test_ins_21 . . CC1.8.Chr07_32020589_32032780\|CC1.8.Chr02_4827093_4840456
+
+et ainsi : head genes_closest_to_TEs.txt CC1.8.Chr01 5894 10193 test_ins_18 . + CC1.8.Chr01 maker exon 45259 46932 . -. ID=Ccan001g005000:exon:1;Parent=Ccan001g005000.1; 35066 CC1.8.Chr01 5894 10193 test_ins_18 . + CC1.8.Chr01 maker gene 45259 46932 . -. ID=Ccan001g005000;Name=Ccan001g005000; 35066 CC1.8.Chr01 6112 6936 test_ins_19 . - CC1.8.Chr01 maker exon 45259 46932 . -. ID=Ccan001g005000:exon:1;Parent=Ccan001g005000.1; 38323 CC1.8.Chr01 6112 6936 test_ins_19 . - CC1.8.Chr01 maker gene 45259 46932 . -. ID=Ccan001g005000;Name=Ccan001g005000; 38323 CC1.8.Chr01 7733 7735 test_ins_20 . . CC1.8.Chr01 maker exon 45259 46932 . -. ID=Ccan001g005000:exon:1;Parent=Ccan001g005000.1; 37524 \### !!! la derniere colonne correspond a la distance avec le TE, ici le gene et l'exon, on a: Colonnes 1-6 : Données du fichier TEs.bed (élément transposable) Col 1 : Chromosome (CC1.8.Chr01) Col 2-3 : Positions de début et fin du TE (5894-10193 pour le premier) Col 4 : Identifiant du TE (test_ins_18) Col 5 : Score (.) Col 6 : Orientation du TE (+, - ou .) Colonnes 7-15 : Données du fichier genes_exons.gff (gène ou exon le plus proche) Col 7 : Chromosome (CC1.8.Chr01) Col 8 : Source d'annotation (maker) Col 9 : Type d'élément (gene ou exon) Col 10-11 : Positions de début et fin du gène/exon (45259-46932) Col 12 : Score (.) Col 13 : Orientation du gène/exon (-) Col 14 : Phase (.) Col 15 : Attributs (ID=Ccan001g005000:exon:1;Parent=Ccan001g005000.1;) Colonne 16 : Distance entre le TE et le gène/exon Dernière colonne : Distance en paires de bases (35066 pour le premier)
+
+j'ai aussi des infos sur les TEs dans annotations_TEs_inpactor.txt : Identifiant du TE (ex: CC1.8.Chr02_2739213_2744118) Type (LTR) Superfamille (RLC, RLG) Famille (BIANCA, TAT, REINA)
+
+head annotations_TEs_inpactor.txt CC1.8.Chr02_2739213_2744118 LTR RLC BIANCA CC1.8.Chr02_4827093_4840456 LTR RLG TAT CC1.8.Chr02_6286507_6291788 LTR RLG REINA CC1.8.Chr02_8207619_8212960 LTR RLG REINA CC1.8.Chr02_8615982_8625578 LTR RLG TAT CC1.8.Chr02_11262365_11272994 LTR RLG TEKAY DEL CC1.8.Chr02_14852374_14857543 LTR RLG REINA
+
+et aussi Infos_ME.INFO : CHROM: Le chromosome POS: Position d'insertion REF: Séquence de référence ALT: Indication d'insertion (INS) MEI: Identifiant de l'élément mobile (ex: TE_00002498) SVLEN: Longueur de la variation structurelle 0START, 0END: Positions précises de début et fin MESTRAND: Orientation de l'insertion (+ ou -)
+
+#### Relier avec les data TEs
+
+```{bash}
+awk 'BEGIN{FS=OFS="\t"}
+    FNR==NR {
+        # Charger les informations de classification des TEs directement
+        class[$1]=$2"\t"$3"\t"$4;
+        if(NF > 4) class[$1]=class[$1]"\t"$5;
+        else class[$1]=class[$1]"\t-";
+        next;
+    }
+    FILENAME == ARGV[2] {
+        # Extraire le MEI pour chaque TE
+        mei[$4]=$7;
+        next;
+    }
+    {
+        # Traiter le résultat de bedtools et y ajouter les informations
+        current_mei = mei[$4];
+        
+        # Traiter les cas où il y a plusieurs MEI séparés par "|"
+        if(current_mei ~ /\|/) {
+            split(current_mei, meis, "|");
+            current_mei = meis[1];  # Prendre le premier MEI
+        }
+        
+        # Rechercher les classifications
+        if(current_mei in class) {
+            print $0, current_mei, class[current_mei];
+        } else {
+            print $0, current_mei, "Unknown\tUnknown\tUnknown\t-";
+        }
+    }' annotations_TEs_inpactor.txt TEs.bed genes_closest_to_TEs.txt > genes_closest_to_TEs_final2.txt
+
+
+
+
+
+awk 'BEGIN{FS=OFS="\t"}
+    FNR==NR {
+        # Charger les informations de classification des TEs directement
+        class[$1]=$2"\t"$3"\t"$4;
+        if(NF > 4) class[$1]=class[$1]"\t"$5;
+        else class[$1]=class[$1]"\t-";
+        next;
+    }
+    FILENAME == ARGV[2] {
+        # Extraire le MEI pour chaque TE
+        mei[$4]=$7;
+        next;
+    }
+    {
+        # Traiter le résultat de bedtools et y ajouter les informations
+        current_mei = mei[$4];
+        
+        # Traiter les cas où il y a plusieurs MEI séparés par "|"
+        if(current_mei ~ /\|/) {
+            split(current_mei, meis, "|");
+            current_mei = meis[1];  # Prendre le premier MEI
+        }
+        
+        # Rechercher les classifications
+        if(current_mei in class) {
+            print $0, current_mei, class[current_mei];
+        } else {
+            print $0, current_mei, "Unknown\tUnknown\tUnknown\t-";
+        }
+    }' annotations_TEs_inpactor.txt TEs.bed genes_closest_to_TEs.txt > TEs_closest_to_genes_final.txt
+
+
+
+awk 'BEGIN{FS=OFS="\t"}
+    FNR==NR {
+        # Charger les informations de classification des TEs directement
+        class[$1]=$2"\t"$3"\t"$4;
+        if(NF > 4) class[$1]=class[$1]"\t"$5;
+        else class[$1]=class[$1]"\t-";
+        next;
+    }
+    FILENAME == ARGV[2] {
+        # Extraire le MEI pour chaque TE
+        mei[$4]=$7;
+        next;
+    }
+    {
+        # Traiter le résultat de bedtools et y ajouter les informations
+        current_mei = mei[$4];
+        
+        # Traiter les cas où il y a plusieurs MEI séparés par "|"
+        if(current_mei ~ /\|/) {
+            split(current_mei, meis, "|");
+            current_mei = meis[1];  # Prendre le premier MEI
+        }
+        
+        # Rechercher les classifications
+        if(current_mei in class) {
+            print $0, current_mei, class[current_mei];
+        } else {
+            print $0, current_mei, "Unknown\tUnknown\tUnknown\t-";
+        }
+    }' annotations_TEs_inpactor.txt TEs.bed genes_closest_to_TEs.txt > TEs_overlapping_genes_final.txt 
+    
+    
+    
+    awk 'BEGIN{FS=OFS="\t"}
+    FNR==NR {
+        # Charger les informations de classification des TEs directement
+        class[$1]=$2"\t"$3"\t"$4;
+        if(NF > 4) class[$1]=class[$1]"\t"$5;
+        else class[$1]=class[$1]"\t-";
+        next;
+    }
+    FILENAME == ARGV[2] {
+        # Extraire le MEI pour chaque TE
+        mei[$4]=$7;
+        next;
+    }
+    {
+        # Traiter le résultat de bedtools et y ajouter les informations
+        current_mei = mei[$4];
+        
+        # Traiter les cas où il y a plusieurs MEI séparés par "|"
+        if(current_mei ~ /\|/) {
+            split(current_mei, meis, "|");
+            current_mei = meis[1];  # Prendre le premier MEI
+        }
+        
+        # Rechercher les classifications
+        if(current_mei in class) {
+            print $0, current_mei, class[current_mei];
+        } else {
+            print $0, current_mei, "Unknown\tUnknown\tUnknown\t-";
+        }
+    }' annotations_TEs_inpactor.txt TEs.bed genes_closest_to_TEs.txt > genes_overlapping_TEs_final.txt
+
+```
+
+head genes_closest_to_TEs_final2.txt CC1.8.Chr01 5894 10193 test_ins_18 . + CC1.8.Chr03_27558004_27574509 CC1.8.Chr01 maker exon 45259 46932 . - . ID=Ccan001g005000:exon:1;Parent=Ccan001g005000.1; 35066 CC1.8.Chr03_27558004_27574509 LTR RLG TEKAY DEL CC1.8.Chr01 5894 10193 test_ins_18 . + CC1.8.Chr03_27558004_27574509 CC1.8.Chr01 maker gene 45259 46932 . - . ID=Ccan001g005000;Name=Ccan001g005000; 35066 CC1.8.Chr03_27558004_27574509 LTR RLG TEKAY DEL CC1.8.Chr01 6112 6936 test_ins_19 . - CC1.8.Chr06_27860847_27874062 CC1.8.Chr01 maker exon 45259 46932 . - . ID=Ccan001g005000:exon:1;Parent=Ccan001g005000.1; 38323 CC1.8.Chr06_27860847_27874062 LTR RLG TEKAY DEL CC1.8.Chr01 6112 6936 test_ins_19 . - CC1.8.Chr06_27860847_27874062 CC1.8.Chr01 maker gene 45259 46932 . - . ID=Ccan001g005000;Name=Ccan001g005000; 38323 CC1.8.Chr06_27860847_27874062 LTR RLG TEKAY DEL CC1.8.Chr01 7733 7735 test_ins_20 . . CC1.8.Chr04_31472507_31484189 CC1.8.Chr01 maker exon 45259 46932 . - . ID=Ccan001g005000:exon:1;Parent=Ccan001g005000.1; 37524 CC1.8.Chr04_31472507_31484189 LTR RLG ATHILA -
+
+head genes_overlapping_TEs_final.txt CC1.8.Chr01 5894 10193 test_ins_18 . + CC1.8.Chr03_27558004_27574509 CC1.8.Chr01 maker exon 45259 46932 . - . ID=Ccan001g005000:exon:1;Parent=Ccan001g005000.1; 35066 CC1.8.Chr03_27558004_27574509 LTR RLG TEKAY DEL CC1.8.Chr01 5894 10193 test_ins_18 . + CC1.8.Chr03_27558004_27574509 CC1.8.Chr01 maker gene 45259 46932 . - . ID=Ccan001g005000;Name=Ccan001g005000; 35066 CC1.8.Chr03_27558004_27574509 LTR RLG TEKAY DEL CC1.8.Chr01 6112 6936 test_ins_19 . - CC1.8.Chr06_27860847_27874062 CC1.8.Chr01 maker exon 45259 46932 . - . ID=Ccan001g005000:exon:1;Parent=Ccan001g005000.1; 38323 CC1.8.Chr06_27860847_27874062 LTR RLG TEKAY DEL
+
+#### Relier avec les genotypes des individus
+
+un fichier test_biallelic_PASS.vcf contenant les variants filtrés PASS, les chromosomes sans les contigs, et toutes les infos des colonnes indiv etc...
+
+```{bash}
+# tri desinfo TEs et indv
+(grep "^#CHROM" /shared/projects/te_coffea/vcf_for_phasing/test_biallelic.vcf; grep -v "^#" test_biallelic.vcf | awk -F'\t' '$7 == "PASS"' | grep -P "^CC1\.8\.Chr[0-9]+\t") > ME_data_indv_PASS_chr.vcf
+# extraire les genotypes etles ID du vcf indv
+awk -F'\t' '$0 !~ /^#/ && $7 == "PASS"' ME_data_indv_PASS_chr.vcf | \
+awk -F'\t' '{printf "%s", $3; for(i=10;i<=NF;i++) printf "\t%s", $i; printf "\n"}' > VCF_genotypes_only.txt
+# joindre avec mes infos genes et exons plus proches des TEs
+awk 'FNR==NR {a[$1]=$0; next} {print $0 "\t" a[$4]}' VCF_genotypes_only.txt genes_closest_to_TEs_final2.txt > genes_closest_to_TEs_final2_withIndv.txt
+```
+
+head ME_data_indv_PASS_chr.vcf #CHROM POS ID REF ALT QUAL FILTER INFO FORMAT 20135-NoIndex-L003-MERGED 20159-NoIndex-L005-MERGED 20511_NoIndex_L001-MERGED 20650-NoIndex-L007-MERGED 20658-NoIndex-L002-MERGED 20708-NoIndex-L008-MERGED 20723-NoIndex-L007-MERGED 20731-NoIndex-L002-MERGED C-127 C-133 C-147 C001-MERGED C002-MERGED C003-MERGED C004-MERGED C005-MERGED C006-MERGED C007-MERGED C008-MERGED C009-MERGED C010-MERGED C011-MERGED C012-MERGED C013-MERGED C014-MERGED C016-MERGED C017-MERGED C018-MERGED C019-MERGED C020-MERGED C021-MERGED C022-MERGED C023-MERGED C025-MERGED C026-MERGED C027-MERGED C029-MERGED C030-MERGED C031-MERGED C032-MERGED C033-MERGED C034-MERGED C035-MERGED C037-MERGED C038-MERGED C039-MERGED C040-MERGED C041-MERGED C042-MERGED C044-MERGED C045-MERGED C047-MERGED C403-Boim7-2LanesMerged C404-Briz2-2LanesMerged D-7 D-8 E100032897_L1_COFtwpgR108321-704 E100032897_L1_COFtwpgR108322-705 E100032897_L1_COFtwpgR108323-706 E100033056_L1_COFpytlR112806-724 E100033056_L1_COFpytlR112807-726 E100033056_L1_COFpytlR112808-728 E100033056_L1_COFpytlR112809-729 E100033056_L1_COFpytlR112810-730 E100033056_L1_COFpytlR112811-731 E100033056_L1_COFpytlR112812-733 E100033056_L1_COFpytlR112813-734 E100033056_L1_COFpytlR112814-735 E100033056_L1_COFpytlR112815-736 E100033056_L1_COFpytlR112816-737 E100033056_L1_COFpytlR112817-738 E100033056_L1_COFpytlR112818-739 E100033056_L1_COFpytlR112819-740 E100033056_L1_COFpytlR112820-741 E100033056_L1_COFpytlR112821-742 E100033056_L1_COFpytlR112822-743 E100033056_L1_COFpytlR112823-744 E100033056_L1_COFpytlR112824-746 E100033056_L1_COFpytlR112825-747 E100033056_L1_COFpytlR112826-748 E100033056_L1_COFpytlR112827-749 E100033056_L1_COFpytlR112828-750 E100033056_L1_COFpytlR112829-751 E100033056_L1_COFpytlR112830-752 E100033056_L1_COFpytlR112831-753 E100033056_L1_COFpytlR112832-754 E100033056_L1_COFpytlR112833-755 E100033056_L1_COFpytlR112834-756 E100033056_L1_COFpytlR112835-757 E100033914_L1_COFphndR129154-638 E100033914_L1_COFphndR129155-639 J-18 J-2 J-22 J-30 J-9 K4Y17Y2-NoIndex-L002-MERGED M1 M2 M3 M4 N-11 N-37 N-38 N-39 N-42 N-5 S-152 S-157 TR10m TR11m TR12m TR13m TR14m TR15m TR4m TR5m TR6m TR9m ZO16 CC1.8.Chr03 7909366 test_ins_2 TGTTAAA <INS:ME> . PASS SVTYPE=DNA;MEI=TE_00002498;MEPRED=PASS;0START=7909366;0END=7909372;SVLEN=596;MESTRAND=-;AC=2 GT 0/. 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/. 0/0 0/0 0/0 0/0 1/1 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0
+
+head genes_closest_to_TEs_final2_withIndv.txt CC1.8.Chr01 5894 10193 test_ins_18 . + CC1.8.Chr03_27558004_27574509 CC1.8.Chr01 maker exon 45259 46932 . - . ID=Ccan001g005000:exon:1;Parent=Ccan001g005000.1; 35066 CC1.8.Chr03_27558004_27574509 LTR RLG TEKAY DEL test_ins_18 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/1 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 CC1.8.Chr01 5894 10193 test_ins_18 . + CC1.8.Chr03_27558004_27574509 CC1.8.Chr01 maker gene 45259 46932 . - . ID=Ccan001g005000;Name=Ccan001g005000; 35066 CC1.8.Chr03_27558004_27574509 LTR RLG TEKAY DEL test_ins_18 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/1 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0 0/0
+
+#### Longueur cumulée en séquences codantes genes et exons
+
+```{bash}
+# je filtre par chromosome pour ne pas prendre les contigs
+# convertir en beddd $1 → le chromosom $4 → la position de début (début GFF = 1, donc on fait -1 pour passer en BED qui commence à 0) $5 → la position de fin (this is the end...:)))
+# on trie, on fusionne, on calcul la somme :3
+grep -P '^CC1\.8\.Chr[0-9]+\t.*\t(gene|exon)\t' /shared/projects/te_coffea/Data_geo_coffea/CC1.8_v2_named_annotation_0.5_BTI.gff3 \
+| awk '{OFS="\t"; print $1, $4-1, $5}' \
+| sort -k1,1 -k2,2n \
+| bedtools merge -i - \
+| awk 'BEGIN {FS=OFS="\t"} {len = $3 - $2; sum[$1] += len} END {for (c in sum) print c "," sum[c]}' \
+| sort \
+> taille_cumulee_regions_codantes_par_chromosome.csv
+
+```
+
+et tadaaaa !!! CC1.8.Chr01,11575263 CC1.8.Chr02,19695644 CC1.8.Chr03,8861945 CC1.8.Chr04,8618491 CC1.8.Chr05,9010168 CC1.8.Chr06,12329285 CC1.8.Chr07,9737817 CC1.8.Chr08,9866751 CC1.8.Chr09,6458896 CC1.8.Chr10,8481948 CC1.8.Chr11,8958001
+
+```{r}
+taille_cumulee_regions_codantes_par_chromosome <- read.table("~/M2/Cafeier/Codes/Tests_TEs/Genes_TEs/taille_cumulee_regions_codantes_par_chromosome.txt", header=TRUE , sep="\t")
+print(taille_cumulee_regions_codantes_par_chromosome)
+```
+
+### Sur R : Proximité des gènes et exons avec les TEs
+
+-   Étudier la distribution des distances entre les TEs et les gènes/exons en fonction de leur classification
+-   Analyser si certaines familles de TEs ont tendance à s'insérer plus près des gènes
+-   Examiner si l'orientation des TEs est corrélée avec leur position par rapport aux gènes
+-   Créer des visualisations montrant ces relations
+
+Après obtention des genes et exons les plus proches et recouvrants grace à bedtools closest sur bash j'ai ainsi :
+
+```{r}
+genes_closest_to_TEs <- read.table("~/M2/Cafeier/Codes/Tests_TEs/Genes_TEs/Closest/genes_closest_to_TEs_final2.txt", header=FALSE , sep="\t")
+colnames(genes_closest_to_TEs) <- c(
+  "TE_chrom",         # Colonne 1 : Chromosome du TE
+  "TE_start",         # Colonne 2 : Position de début du TE
+  "TE_end",           # Colonne 3 : Position de fin du TE
+  "TE_id",            # Colonne 4 : Identifiant du TE
+  "TE_score",         # Colonne 5 : Score (souvent ".")
+  "TE_strand",        # Colonne 6 : Orientation du TE
+  "MEI_tot",
+  
+  "Gene_chrom",       # Colonne 7 : Chromosome du gène/exon
+  "Gene_source",      # Colonne 8 : Source d'annotation
+  "Gene_type",        # Colonne 9 : Type (gene ou exon)
+  "Gene_start",       # Colonne 10 : Position de début du gène/exon
+  "Gene_end",         # Colonne 11 : Position de fin du gène/exon
+  "Gene_score",       # Colonne 12 : Score (souvent ".")
+  "Gene_strand",      # Colonne 13 : Orientation du gène/exon
+  "Gene_phase",       # Colonne 14 : Phase (souvent ".")
+  "Gene_attributes",  # Colonne 15 : Attributs (ID, Parent, etc.)
+  
+  "TE_Gene_distance",  # Colonne 16 : Distance entre le TE et le gène/exon
+  "MEI",                # Le MEI 
+  "Type",
+  "Superfamily",
+  "Family",
+  "Line"
+)
+genes_closest_to_TEs_withIndv <- read.table("~/M2/Cafeier/Codes/Tests_TEs/Genes_TEs/Closest/genes_closest_to_TEs_final2_withIndv.txt", header=FALSE , sep="\t")
+colnames(genes_closest_to_TEs_withIndv) <- c(
+  "TE_chrom", "TE_start", "TE_end", "TE_id", "TE_score", "TE_strand","MEI_tot",
+  "Gene_chrom", "Gene_source", "Gene_type", "Gene_start", "Gene_end", "Gene_score",
+  "Gene_strand", "Gene_phase", "Gene_attributes", "TE_Gene_distance", "MEI",
+  "Type", "Superfamily", "Family", "Line", "ID",
+  "20135-NoIndex-L003-MERGED", "20159-NoIndex-L005-MERGED", "20511_NoIndex_L001-MERGED",
+  "20650-NoIndex-L007-MERGED", "20658-NoIndex-L002-MERGED", "20708-NoIndex-L008-MERGED",
+  "20723-NoIndex-L007-MERGED", "20731-NoIndex-L002-MERGED", "C-127", "C-133", "C-147",
+  "C001-MERGED", "C002-MERGED", "C003-MERGED", "C004-MERGED", "C005-MERGED",
+  "C006-MERGED", "C007-MERGED", "C008-MERGED", "C009-MERGED", "C010-MERGED",
+  "C011-MERGED", "C012-MERGED", "C013-MERGED", "C014-MERGED", "C016-MERGED",
+  "C017-MERGED", "C018-MERGED", "C019-MERGED", "C020-MERGED", "C021-MERGED",
+  "C022-MERGED", "C023-MERGED", "C025-MERGED", "C026-MERGED", "C027-MERGED",
+  "C029-MERGED", "C030-MERGED", "C031-MERGED", "C032-MERGED", "C033-MERGED",
+  "C034-MERGED", "C035-MERGED", "C037-MERGED", "C038-MERGED", "C039-MERGED",
+  "C040-MERGED", "C041-MERGED", "C042-MERGED", "C044-MERGED", "C045-MERGED",
+  "C047-MERGED", "C403-Boim7-2LanesMerged", "C404-Briz2-2LanesMerged", "D-7", "D-8",
+  "E100032897_L1_COFtwpgR108321-704", "E100032897_L1_COFtwpgR108322-705",
+  "E100032897_L1_COFtwpgR108323-706", "E100033056_L1_COFpytlR112806-724",
+  "E100033056_L1_COFpytlR112807-726", "E100033056_L1_COFpytlR112808-728",
+  "E100033056_L1_COFpytlR112809-729", "E100033056_L1_COFpytlR112810-730",
+  "E100033056_L1_COFpytlR112811-731", "E100033056_L1_COFpytlR112812-733",
+  "E100033056_L1_COFpytlR112813-734", "E100033056_L1_COFpytlR112814-735",
+  "E100033056_L1_COFpytlR112815-736", "E100033056_L1_COFpytlR112816-737",
+  "E100033056_L1_COFpytlR112817-738", "E100033056_L1_COFpytlR112818-739",
+  "E100033056_L1_COFpytlR112819-740", "E100033056_L1_COFpytlR112820-741",
+  "E100033056_L1_COFpytlR112821-742", "E100033056_L1_COFpytlR112822-743",
+  "E100033056_L1_COFpytlR112823-744", "E100033056_L1_COFpytlR112824-746",
+  "E100033056_L1_COFpytlR112825-747", "E100033056_L1_COFpytlR112826-748",
+  "E100033056_L1_COFpytlR112827-749", "E100033056_L1_COFpytlR112828-750",
+  "E100033056_L1_COFpytlR112829-751", "E100033056_L1_COFpytlR112830-752",
+  "E100033056_L1_COFpytlR112831-753", "E100033056_L1_COFpytlR112832-754",
+  "E100033056_L1_COFpytlR112833-755", "E100033056_L1_COFpytlR112834-756",
+  "E100033056_L1_COFpytlR112835-757", "E100033914_L1_COFphndR129154-638",
+  "E100033914_L1_COFphndR129155-639", "J-18", "J-2", "J-22", "J-30", "J-9",
+  "K4Y17Y2-NoIndex-L002-MERGED", "M1", "M2", "M3", "M4", "N-11", "N-37", "N-38",
+  "N-39", "N-42", "N-5", "S-152", "S-157", "TR10m", "TR11m", "TR12m", "TR13m",
+  "TR14m", "TR15m", "TR4m", "TR5m", "TR6m", "TR9m", "ZO16"
+)
+library(dplyr)
+
+
+# enlever les individus sans autorisation d'utilisation
+cols_to_remove <- c(
+  "X20135.NoIndex.L003.MERGED", "X20159.NoIndex.L005.MERGED", "X20511_NoIndex_L001.MERGED", 
+  "X20650.NoIndex.L007.MERGED", "X20658.NoIndex.L002.MERGED", "X20708.NoIndex.L008.MERGED", 
+  "X20723.NoIndex.L007.MERGED", "X20731.NoIndex.L002.MERGED", "C.147", "C018.MERGED", 
+  "J.18", "J.2", "J.22", "J.9", "M1", "M2", "M3", "M4", 
+  "N.11", "N.37", "N.38", "N.39", "N.42", "N.5"
+)
+# Vérifier lesquels existent et les suprimer
+existing_cols <- cols_to_remove[cols_to_remove %in% colnames(genes_closest_to_TEs_withIndv)]
+genes_closest_to_TEs_withIndv <- genes_closest_to_TEs_withIndv %>%
+  select(-all_of(existing_cols))
+# passer en matrice 012? Idem à la commande vcftools utilisée dan smes precedents scriptsss
+genes_closest_to_TEs_withIndv[,24:139] <- lapply(genes_closest_to_TEs_withIndv[,24:139], function(col) {
+  recoded <- ifelse(col %in% c("0/0", "./0", "./.", "0/."), 0,
+             ifelse(col %in% c("0/1", "1/0", "./1", "1/."), 1,
+             ifelse(col == "1/1", 2, NA)))  # NA si autre cas non prévu
+  return(as.integer(recoded))
+})
+# Ensuitre changer les "RLG" en "Gypsy" et les "RLC en "Copia" dans Superfamily
+genes_closest_to_TEs_withIndv <- genes_closest_to_TEs_withIndv %>%
+  mutate(Superfamily = recode(Superfamily,
+                              "RLG" = "Gypsy",
+                              "RLC" = "Copia"))
+# Filtrer pour retirer les lignes où Family est vide avec les gypsy non assigné a une famille TE, manque de précision dans l'assignation des MEI data inpactor :3
+genes_closest_to_TEs_withIndv <- genes_closest_to_TEs_withIndv %>% filter(Family != "")
+data <- data %>% filter(Family != "" & Superfamily=="Gypsy")
+# vérification : !!! ne renvoie pas la charge 2*Homo + hetero !!!
+table(genes_closest_to_TEs_withIndv$Superfamily)
+table(genes_closest_to_TEs_withIndv$Family)
+
+### meme résultats qu'avec la commande closest
+#genes_overlapping_TEs <- read.table("~/M2/Cafeier/Codes/Tests_TEs/Genes_TEs/Closest/genes_overlapping_TEs_final.txt", header=FALSE , sep="\t")
+#colnames(genes_overlapping_TEs) <- c("TE_chrom", "TE_start", "TE_end", "TE_id","TE_score", "TE_strand",  "MEI_tot", "Gene_chrom","Gene_source","Gene_type","Gene_end","Gene_score", "Gene_strand", "Gene_phase", "Gene_attributes","TE_Gene_distance","MEI",  "Type", "Superfamily", "Family", "Line")
+```
+
+#### Visualisations
+
+Distribution des distances par Type/Superfamily/Family
+
+```{r}
+library(tidyverse)
+
+# Nettoyage de base pour mes représentatiins
+df <- genes_closest_to_TEs_withIndv %>%
+  mutate(
+    Gene_type = as.factor(Gene_type),
+    Type = as.factor(Type),
+    Superfamily = as.factor(Superfamily),
+    Family = as.factor(Family),
+    Gene_type = as.factor(Gene_type),
+    Distance = as.numeric(TE_Gene_distance),
+    TE_strand = factor(TE_strand, levels = c("+", "-")),  # Définir les niveaux
+    Gene_strand = factor(Gene_strand, levels = c("+", "-")),  # Idem pour Gene_strand
+    Same_orientation = TE_strand == Gene_strand
+  )
+# Créer une colonne qui indique si c'est un overlap/chevauchement (valeur zéro)
+df <- df %>%
+  mutate(
+    is_overlap = Distance == 0,  # Marque les chevauchements
+    Distance_adjusted = ifelse(Distance > 0, Distance, NA)  # pour le log10
+  )
+
+df %>%
+  filter(Superfamily %in% c("Gypsy", "Copia"),
+         Gene_type %in% c("gene", "exon")) %>%
+  group_by(Family, Superfamily, Gene_type) %>%
+  summarise(
+    mean_distance = mean(Distance, na.rm = TRUE),
+    median_distance = median(Distance, na.rm = TRUE),
+    n = n(),
+    .groups = "drop"
+  ) %>%
+  ggplot(aes(x = fct_reorder(Family, mean_distance), y = mean_distance, fill = Superfamily)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~Gene_type, scales = "free_y") +  # Ajoute scales = "free_y" si certaines facettes ont des échelles très différentes
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "Distances moyennes entre TEs Gypsy/Copia et gènes ou exons",
+    x = "Famille",
+    y = "Distance moyenne",
+    fill = "Superfamily"
+  )
+
+
+
+#avec écart-type divisé par la racine de n, ce qui donne l’erreur standard de la moyenne (SEM)
+
+df %>%
+  filter(Superfamily %in% c("Gypsy", "Copia"),
+         Gene_type %in% c("gene", "exon")) %>%
+  group_by(Family, Superfamily) %>%
+  summarise(
+    mean_distance = mean(Distance, na.rm = TRUE),
+    sd_distance = sd(Distance, na.rm = TRUE),
+    n = n(),
+    sem = sd_distance / sqrt(n),
+    .groups = "drop"
+  ) %>%
+  ggplot(aes(x = fct_reorder(Family, mean_distance), y = mean_distance, fill = Superfamily)) +
+  geom_col(show.legend = FALSE) +
+  geom_errorbar(aes(ymin = mean_distance - sem, ymax = mean_distance + sem), 
+                width = 0.3, color = "black") +
+  facet_wrap(~Superfamily, scales = "free_y") +
+  coord_flip() +
+  theme_minimal() +
+  labs(
+    title = "Distances moyennes entre TEs Gypsy/Copia et gènes (ou exons)",
+    x = "Famille",
+    y = "Distance moyenne ± SEM"
+  )
+
+wilcox.test(Distance ~ Superfamily, data = df)
+
+```
+
+Tests statistiques:
+
+Krustal-Wallis est un test non patrametrique equivalent à l'anova qui permet de détecter s'il y a une différence entre mes familles TEs, mais sans indiquer quelle famille est differente des autres.
+
+Wilcoxon (aussi utilisé en pairwise) est l'equivalent du t-test mais non parametrique nous permettant de comparer deux groupes
+
+```{r}
+df_filtered <- df %>%
+  filter(Superfamily %in% c("Gypsy", "Copia"), !is_overlap)
+
+wilcox.test(Distance_adjusted ~ Superfamily, data = df_filtered) # dist ajustee est sans les overlaps
+
+kruskal.test(Distance_adjusted ~ Family, data = df_filtered)
+
+pairwise.wilcox.test(df_filtered$Distance_adjusted, df_filtered$Family, p.adjust.method = "bonferroni")
+
+# Tableau recap 
+# Statistiques descriptives par famille TE
+summary_stats_distgenes <- df_filtered %>%
+  group_by(Superfamily, Family) %>%
+  summarise(
+    nn_elements = n(),
+    mean_distance = mean(Distance_adjusted),
+    median_distance = median(Distance_adjusted),
+    sd_distance = sd(Distance_adjusted),
+    min_distance = min(Distance_adjusted),
+    max_distance = max(Distance_adjusted)
+  ) %>%
+  arrange(Superfamily, desc(mean_distance))
+print(summary_stats_distgenes)
+
+library(ggpubr)
+  ggplot(df_filtered, aes(x = Superfamily, y = Distance_adjusted, fill = Superfamily)) +
+  geom_boxplot(outlier.alpha = 0.2) +
+  stat_compare_means(method = "wilcox.test", label = "p.format") +  # Affiche la p-value
+  scale_y_log10() +
+  theme_minimal() +
+  labs(
+    title = "Comparaison des distances (Gypsy vs Copia)",
+    x = "Superfamily",
+    y = "Distance (log10)"
+  )
+
+# Par familles TEs en séparant gypsy et copia
+ggplot(df_filtered, aes(x = Family, y = Distance_adjusted, fill = Family)) +
+  geom_boxplot(outlier.alpha = 0.2) +
+  scale_y_log10() +
+  stat_compare_means(
+    method = "wilcox.test",
+    label = "p.format",
+    comparisons = NULL
+  ) +
+  facet_wrap(~ Superfamily, scales = "free_x") +  # Séparation des superfamilles
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(
+    title = "Comparaison des distances aux régions codantes par Familles TEs",
+    x = "Famille TE",
+    y = "Distance (log10)"
+  )
+```
+
+idem mais avec les overlaps
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(ggpubr)
+library(tidyr)
+library(purrr)
+
+df_filtered_overlaps <- df %>%
+  filter(Superfamily %in% c("Gypsy", "Copia"))
+
+############# tests statsss ################
+# par superfamilles gypsy copia 
+wilcox_result <- wilcox.test(Distance ~ Superfamily, data = df_filtered_overlaps)
+print(wilcox_result)
+
+# par famille
+kruskal_result <- kruskal.test(Distance ~ Family, data = df_filtered_overlaps)
+print(kruskal_result)
+
+pairwise_result <- pairwise.wilcox.test(
+  df_filtered_overlaps$Distance,
+  df_filtered_overlaps$Family,
+  p.adjust.method = "bonferroni"
+)
+print(pairwise_result)
+
+# par famille par Superfamily
+results <- df_filtered_overlaps %>%
+  group_by(Superfamily) %>%
+  group_map(~ {
+    df_sub <- .x
+      pairwise_result <- pairwise.wilcox.test(
+        df_sub$Distance,
+        df_sub$Family,
+        p.adjust.method = "bonferroni"
+      )
+      list(Superfamily = unique(df_sub$Superfamily), result = pairwise_result)
+  })
+
+# Afficher les résultats
+for (res in results) {
+  cat("\n--- Superfamily:", res$Superfamily, "---\n")
+  print(res$result)
+}
+
+
+
+
+
+############## Tableau recap ################## 
+# Statistiques descriptives par famille TE
+summary_stats_distgenes_overlaps <- df_filtered_overlaps %>%
+  group_by(Superfamily, Family) %>%
+  summarise(
+    nn_elements = n(),
+    mean_distance = mean(Distance),
+    median_distance = median(Distance),
+    sd_distance = sd(Distance),
+    min_distance = min(Distance),
+    max_distance = max(Distance)
+  ) %>%
+  arrange(Superfamily, desc(mean_distance))
+print(summary_stats_distgenes_overlaps)
+
+############## Graphs ##################
+library(ggpubr)
+  ggplot(df_filtered_overlaps, aes(x = Superfamily, y = Distance+1, fill = Superfamily)) +
+  geom_boxplot(outlier.alpha = 0.2) +
+  stat_compare_means(method = "wilcox.test", label = "p.format") +  # Affiche la p-value
+  scale_y_log10() +
+  theme_minimal() +
+  labs(
+    title = "Comparaison des distances (Gypsy vs Copia) avec overlaps",
+    x = "Superfamily",
+    y = "Distance (log10 + 1)"
+  )
+# Par familles TEs en séparant gypsy et copia
+ggplot(df_filtered_overlaps, aes(x = Family, y = Distance + 1, fill = Family)) +
+  geom_boxplot(outlier.alpha = 0.2) +
+  stat_compare_means(method = "wilcox.test", label = "p.format", comparisons = NULL) +
+  facet_wrap(~ Superfamily, scales = "free_x") +
+  scale_y_log10() +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(
+    title = "Comparaison des distances aux régions codantes par Familles TEs avec overlaps",
+    x = "Famille TE",
+    y = "Distance (log10, +1)"
+  )
+
+
+
+# Filtrer les NA
+#df_plot_overlaps <- df_filtered_overlaps %>%
+ #filter(!is.na(Distance))
+
+# Fonction pour créer les comparaisons et p-values ajustées dans chaque Superfamily
+# toutes les combinaisons possibles par paires des modalités dans group_var (superfamily ou family; comparaisons deux à deux), sous forme de liste (grâce à simplify = FALSE)
+fonction_get_comparisons <- function(data, group_var) {
+  families <- unique(data[[group_var]])
+  combn(families, 2, simplify = FALSE)
+}
+
+# Liste pour stocker les résultats à afficher sur le plot
+comparison_df <- df_filtered_overlaps %>%
+  group_by(Superfamily) %>%
+  group_split() %>%
+  map_dfr(function(sub_df) {
+    res <- pairwise.wilcox.test(
+      sub_df$Distance,
+      sub_df$Family,
+      p.adjust.method = "bonferroni"
+    )
+    # tidy format
+    tidy_mat <- as.data.frame(as.table(res$p.value)) %>%
+      filter(!is.na(Freq)) %>%
+      rename(group1 = Var1, group2 = Var2, p.adj = Freq) %>%
+      mutate(Superfamily = unique(sub_df$Superfamily))
+    tidy_mat
+  })
+
+# Convertir en liste de comparaisons pour stat_compare_means
+comparison_list <- comparison_df %>%
+  group_by(Superfamily) %>%
+  summarise(comps = list(map2(group1, group2, ~ c(.x, .y)))) %>%
+  deframe()
+
+# Graphe
+ggplot(df_filtered_overlaps, aes(x = Family, y = Distance + 1, fill = Family)) +
+  geom_boxplot(outlier.alpha = 0.2, width = 0.6) +
+  # Moyenne ± SE
+  stat_summary(
+    fun = mean,
+    fun.min = ~ mean(.) - sd(.) / sqrt(length(.)),
+    fun.max = ~ mean(.) + sd(.) / sqrt(length(.)),
+    #geom = "errorbar",
+    width = 0.2,
+    color = "black",
+   # position = position_dodge(width = 0.6)
+  ) +
+  # Ajouter les p-values par facette
+  stat_compare_means(
+    aes(group = Family),
+    method = "wilcox.test",
+    label = "p.signif",
+    comparisons = comparison_list,
+    p.adjust.method = "BH"
+  ) +
+  facet_wrap(~ Superfamily, scales = "free_x") +
+  scale_y_log10() +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(
+    title = "Distances aux séquences codantes par famille TE",
+    x = "Famille TE",
+    y = "Distance ajustée (log10 + 1)"
+  )
+
+```
+
+## Taux de recombinaison
+
+mail Valérie : voici l'article de Thomas et Sylvain (Glemin) qui parle de la relation taille de chr et recombinaison,  les cartes que je vous ai données et qu'on a vues ce matin, ont été utilisées dans leur analyse (parmi de nombreuses autres)
+
+\
+Diversity and determinants of recombination landscapes in flowering plants , <https://journals.plos.org/plosgenetics/article?id=10.1371/journal.pgen.1010141>
+
+-        pour les données que je vous passées précédemment, voici les précisions : Yes, the the second column is the physical coordinate and then there are male and female recombination rates as cM/Mb.
+
+Le genome de référence semble avoir été modifié :    Here is the link to the fasta seq : <https://www.dropbox.com/scl/fi/jviwaurr3sfjnj7erlzz6/Cor_v3_PR_2025.fa.gz?rlkey=eq7y9r3s2zzfn0n9skx27gml9&st=7pktoaao&dl=0>
+
+Sur le cluster :
+
+head /shared/projects/te_coffea/density_12mar25.txt/density_12mar25.txt
+
+LG1 6431 5.875572561183701 4.097186497958419
+
+LG1 19295 5.898105317544632 4.097708091943688
+
+LG1 32159 5.938610849003327 4.098725080011405
+
+LG1 45022 6.006940639112454 4.089072704705665
+
+LG1 57886 6.083939124115062 4.092145768018639
+
+jryan\@clust-slurm-client:/shared/projects/te_coffea/agps\$ head contigs.agp
+
+Scaffold_142.c1 1 140894 1 W Scaffold_142;HRSCAF=213 1 140894 +
+
+Scaffold_142.c2 1 174011 2 W Scaffold_142;HRSCAF=213 140995 315005 +
+
+Scaffold_142.c3 1 378358 3 W Scaffold_142;HRSCAF=213 315106 693463 +
+
+Scaffold_142.c4 1 264006 4 W Scaffold_142;HRSCAF=213 693564 957569 +
+
+Scaffold_142.c5 1 1174272 5 W Scaffold_142;HRSCAF=213 957571 2131842 +
+
+jryan\@clust-slurm-client:/shared/projects/te_coffea/agps\$ head REF_LA.agp
+
+LG10 1 5866129 1 W Scaffold_142.c47 1 5866129 -
+
+LG10 5866130 5878635 2 W Scaffold_668.c1 16647 29152 +
+
+LG10 5878636 9664912 3 W Scaffold_142.c46 1 3786277 -
+
+LG10 9664913 9665012 4 U 100 contig no na
+
+Je vais me baser sur les données de Crouzillat2020 par chromosome dans Data_geo_coffea :
+
+```         
+ head(recomb_chr1)     phys rec.rate    upper    lower   1 0.05       NA       NA       NA   2 0.15       NA       NA       NA   3 0.25 2.020603 2.135919 1.910172   4 0.35 2.022432 2.146507 1.906692   5 0.45 2.013648 2.137983 1.896789   6 0.55 2.008248 2.132299 1.891811
+```
+
+j'ai aussi chr_lenght
+
+Chromosome chr_lenght
+
+1 CC1.8.Chr01 66355530
+
+2 CC1.8.Chr02 79361681
+
+3 CC1.8.Chr03 42304562
+
+4 CC1.8.Chr04 51033085
+
+5 CC1.8.Chr05 50946795
+
+6 CC1.8.Chr06 67836911
+
+7 CC1.8.Chr07 42698186
+
+8 CC1.8.Chr08 50124509
+
+9 CC1.8.Chr09 41966822
+
+10 CC1.8.Chr10 50112997
+
+11 CC1.8.Chr11 42863559
+
+```{r}
+recomb_chr1 <- read.table("~/M2/Cafeier/data_coffea/Data_geo_coffea/Coffea_canephora_Crouzillat2020_chromosomeA.txt", header=TRUE , sep="\t")
+recomb_chr2 <- read.table("~/M2/Cafeier/data_coffea/Data_geo_coffea/Coffea_canephora_Crouzillat2020_chromosomeB.txt", header=TRUE , sep="\t")
+recomb_chr3 <- read.table("~/M2/Cafeier/data_coffea/Data_geo_coffea/Coffea_canephora_Crouzillat2020_chromosomeC.txt", header=TRUE , sep="\t")
+recomb_chr4 <- read.table("~/M2/Cafeier/data_coffea/Data_geo_coffea/Coffea_canephora_Crouzillat2020_chromosomeD.txt", header=TRUE , sep="\t")
+recomb_chr5 <- read.table("~/M2/Cafeier/data_coffea/Data_geo_coffea/Coffea_canephora_Crouzillat2020_chromosomeE.txt", header=TRUE , sep="\t")
+recomb_chr6 <- read.table("~/M2/Cafeier/data_coffea/Data_geo_coffea/Coffea_canephora_Crouzillat2020_chromosomeF.txt", header=TRUE , sep="\t")
+recomb_chr7 <- read.table("~/M2/Cafeier/data_coffea/Data_geo_coffea/Coffea_canephora_Crouzillat2020_chromosomeG.txt", header=TRUE , sep="\t")
+recomb_chr8 <- read.table("~/M2/Cafeier/data_coffea/Data_geo_coffea/Coffea_canephora_Crouzillat2020_chromosomeH.txt", header=TRUE , sep="\t")
+recomb_chr9 <- read.table("~/M2/Cafeier/data_coffea/Data_geo_coffea/Coffea_canephora_Crouzillat2020_chromosomeI.txt", header=TRUE , sep="\t")
+recomb_chr10 <- read.table("~/M2/Cafeier/data_coffea/Data_geo_coffea/Coffea_canephora_Crouzillat2020_chromosomeJ.txt", header=TRUE , sep="\t")
+recomb_chr11 <- read.table("~/M2/Cafeier/data_coffea/Data_geo_coffea/Coffea_canephora_Crouzillat2020_chromosomeK.txt", header=TRUE , sep="\t")
+```
+
+```{r}
+# Fonction pour trouver le taux de recombinaison correspondant à une position
+get_recombination_rate <- function(chrom, position, recomb_data_list) {
+  # Extraire le numéro du chromosome à partir de "CC1.8.Chr01" -> 1
+  chrom_num <- as.numeric(gsub("CC1\\.8\\.Chr(\\d+).*", "\\1", chrom))
+
+  
+  # Convertir la position de pb à Mb
+  pos_mb <- position / 1000000
+  
+  # Récupérer les données de recombinaison pour ce chromosome
+  recomb_data <- recomb_data_list[[chrom_num]]
+  
+  # Trouver l'intervalle contenant cette position
+  for(i in 2:nrow(recomb_data)) {
+    if(pos_mb >= recomb_data$phys[i-1] && pos_mb < recomb_data$phys[i]) {
+      return(recomb_data$rec.rate[i])
+    }
+  }
+  
+  # Si la position est avant la première position disponible
+  if(pos_mb < recomb_data$phys[1]) {
+    return(NA)
+  }
+  
+  return(NA)
+}
+
+# Stocker tous les dataframes de recombinaison dans une liste
+recomb_list <- list(
+  recomb_chr1, recomb_chr2, recomb_chr3, recomb_chr4, recomb_chr5,
+  recomb_chr6, recomb_chr7, recomb_chr8, recomb_chr9, recomb_chr10, recomb_chr11
+)
+
+# Ajouter une colonne de taux de recombinaison au dataframe principal
+genes_closest_to_TEs_withIndv$recombination_rate <- mapply(
+  get_recombination_rate,
+  genes_closest_to_TEs_withIndv$TE_chrom,
+  genes_closest_to_TEs_withIndv$TE_start,
+  MoreArgs = list(recomb_data_list = recomb_list)
+)
+
+# Afficher les premières lignes du résultat
+print(genes_closest_to_TEs_withIndv[, c("TE_chrom", "TE_start", "TE_end", "TE_id", "recombination_rate")])
+print(genes_closest_to_TEs_withIndv)
+
+
+write.table(genes_closest_to_TEs_withIndv,"~/M2/Cafeier/Codes/Matrice_indv/genes_closest_to_TEs_withIndv.txt",sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+```
+
+# Tout le génome
+
+```{r}
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Reformater aussi les noms de colonnes
+colnames(genes_closest_to_TEs_withIndv) <- gsub("-", ".", colnames(genes_closest_to_TEs_withIndv))
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+
+# Liste de toutes les populations
+all_pops <- list(
+  A = pop_A, G = pop_G, C = pop_C, D = pop_D, hb = pop_hb,
+  B = pop_B, O = pop_O, E = pop_E, R = pop_R, V = pop_V
+)
+
+# Définir les groupes de populations
+pop_groups <- list(
+  AG = c(pop_A, pop_G),
+  C = pop_C,
+  D = pop_D,
+  hb = pop_hb,
+  OB = c(pop_O, pop_B),
+  ER = c(pop_E, pop_R),
+  V = pop_V
+)
+
+# Fonction pour calculer les fréquences alléliques par population et famille
+calculate_allele_freq_by_pop <- function(data_subset, pop_ids, superfamily, family) {
+  # Filtrer les données pour cette famille et superfamily
+  data_subset <- data_subset[data_subset$Superfamily == superfamily & data_subset$Family == family, ]
+  
+  # Filtrer les colonnes correspondant à cette population
+  pop_cols <- intersect(pop_ids, colnames(data_subset))
+  
+  # Pour les données diploïdes: calculer le nombre total d'allèles 
+  # Pour chaque individu: 0=0 allèles/abs de TE, 1=1 allèle/hétérozygote TE, 2=2 allèles homozygote TEs
+  total_alleles <- sum(as.matrix(data_subset[, pop_cols]), na.rm = TRUE)
+  
+  # Calculer le nombre maximum d'allèles possibles (2 par individu non-NA)
+  max_alleles <- 2 * sum(!is.na(as.matrix(data_subset[, pop_cols])))
+  
+  # Calculer la fréquence allélique (TEs) (nombre de TEs / nombre max de TEs)
+  allele_freq <- if(max_alleles > 0) total_alleles / max_alleles else 0
+  
+  return(allele_freq)
+}
+
+# Dataframe pour stocker les résultats
+recap_data_TEs_genome_recomb_genes <- data.frame()
+
+# Identifier les colonnes qui correspondent à des individus valides
+all_valid_indiv_ids <- unlist(all_pops)
+indiv_cols <- which(colnames(genes_closest_to_TEs_withIndv) %in% all_valid_indiv_ids)
+
+# Si aucune colonne d'individu n'est trouvée, utiliser l'ancienne méthode
+if (length(indiv_cols) == 0) {
+  indiv_cols_start <- 23  # Ajustez selon  dataframe 
+  indiv_cols_end <- ncol(genes_closest_to_TEs_withIndv) - 1  # Ajustez si nécessaire
+  indiv_indices <- indiv_cols_start:indiv_cols_end
+} else {
+  indiv_indices <- indiv_cols
+}
+
+# Obtenir toutes les familles uniques pour Gypsy et Copia à l'échelle du génome
+gypsy_families <- unique(genes_closest_to_TEs_withIndv$Family[genes_closest_to_TEs_withIndv$Superfamily == "Gypsy"])
+copia_families <- unique(genes_closest_to_TEs_withIndv$Family[genes_closest_to_TEs_withIndv$Superfamily == "Copia"])
+
+# Boucle sur chaque individu
+for (i in indiv_indices) {
+  indiv_name <- colnames(genes_closest_to_TEs_withIndv)[i]
+  
+  # Vérifier si le nom de la colonne est un nom d'individu valide
+  if (is.na(indiv_name) || !any(sapply(all_pops, function(p) indiv_name %in% p))) {
+    next
+  }
+  
+  # Déterminer la population de l'individu
+  pop <- "Unknown"
+  if (indiv_name %in% pop_A) pop <- "A"
+  else if (indiv_name %in% pop_G) pop <- "G"
+  else if (indiv_name %in% pop_C) pop <- "C"
+  else if (indiv_name %in% pop_D) pop <- "D"
+  else if (indiv_name %in% pop_hb) pop <- "hb"
+  else if (indiv_name %in% pop_B) pop <- "B"
+  else if (indiv_name %in% pop_O) pop <- "O"
+  else if (indiv_name %in% pop_E) pop <- "E"
+  else if (indiv_name %in% pop_R) pop <- "R"
+  else if (indiv_name %in% pop_V) pop <- "V"
+  
+  # Déterminer le groupe de population de l'individu
+  pop_group <- "Unknown"
+  if (pop %in% c("A", "G")) pop_group <- "AG"
+  else if (pop == "C") pop_group <- "C"
+  else if (pop == "D") pop_group <- "D"
+  else if (pop == "hb") pop_group <- "hb"
+  else if (pop %in% c("B", "O")) pop_group <- "OB"
+  else if (pop %in% c("E", "R")) pop_group <- "ER"
+  else if (pop == "V") pop_group <- "V"
+  
+  # Fonction pour traiter chaque famille
+  process_family <- function(family, superfamily) {
+    # S'assurer que la colonne est numérique
+    if (!is.numeric(genes_closest_to_TEs_withIndv[[i]])) {
+      genes_closest_to_TEs_withIndv[[i]] <- as.numeric(as.character(genes_closest_to_TEs_withIndv[[i]]))
+    }
+    
+    subset_data <- genes_closest_to_TEs_withIndv[genes_closest_to_TEs_withIndv$Superfamily == superfamily & 
+                                             genes_closest_to_TEs_withIndv$Family == family, ]
+    
+    # S'assurer qu'il y a des données pour cette combinaison
+    if (nrow(subset_data) == 0) {
+      return()  # Sortir de la fonction si pas de données
+    }
+    
+    # Calculs pour l'individu
+    total_family <- nrow(subset_data)
+    sum_family <- sum(subset_data[[i]], na.rm = TRUE)
+    count_hetero_family <- sum(subset_data[[i]] == 1, na.rm = TRUE)
+    count_homo_family <- sum(subset_data[[i]] == 2, na.rm = TRUE)
+    count_abs_family <- sum(subset_data[[i]] == 0, na.rm = TRUE)
+    TEs_load <- count_hetero_family + (2 * count_homo_family)
+    
+    # Calcul de la distance moyenne aux gènes pour cette famille
+    mean_gene_distance <- mean(subset_data$TE_Gene_distance, na.rm = TRUE)
+    
+    # Calcul du taux de recombinaison moyen par famille 
+    mean_recomb_rate <- mean(subset_data$recombination_rate, na.rm = TRUE)
+    
+    # Calcul des fréquences alléliques par groupe de population
+    allele_freq <- NA
+    if (pop_group != "Unknown") {
+      pop_ids <- pop_groups[[pop_group]]
+      allele_freq <- calculate_allele_freq_by_pop(genes_closest_to_TEs_withIndv, pop_ids, superfamily, family)
+    }
+    
+    new_row <- data.frame(
+      Genome_wide = TRUE,
+      Individual = indiv_name, 
+      Population = pop,
+      Population_Group = pop_group,
+      Superfamily = superfamily,
+      Family = family,
+      Count = sum_family,
+      Count_hetero = count_hetero_family,
+      Count_homo = count_homo_family,
+      Ratio = ifelse(count_homo_family == 0, NA, count_hetero_family / count_homo_family),
+      Total = total_family,
+      Mean_Gene_Distance = mean_gene_distance,
+      Mean_Recombination_Rate = mean_recomb_rate,
+      Allele_Freq_Pop_Group = allele_freq
+    )
+    
+    recap_data_TEs_genome_recomb_genes <<- rbind(recap_data_TEs_genome_recomb_genes, new_row)
+  }
+  
+  # Appliquer la fonction à chaque famille
+  lapply(gypsy_families, process_family, superfamily = "Gypsy")
+  lapply(copia_families, process_family, superfamily = "Copia")
+}
+
+# Réorganiser les niveaux
+recap_data_TEs_genome_recomb_genes$Population_Group <- factor(recap_data_TEs_genome_recomb_genes$Population_Group,
+                                                 levels = c("D", "C", "AG", "hb", "ER", "OB", "V", "Unknown"))
+
+# Ajouter la taille totale du génome (somme des longueurs des chromosomes)
+chr_length <- read.table("~/M2/Cafeier/Codes/TEs/Coffea_canephora_chr_length.txt", header=TRUE, sep="\t")
+genome_size <- sum(chr_length$chr_length)
+genome_size_Mbp <- genome_size / 1e6  # en Mbp
+
+# Ajouter la densité en TEs pour le génome entier
+recap_data_TEs_genome_recomb_genes$genome_size <- genome_size
+recap_data_TEs_genome_recomb_genes$genome_size_Mbp <- genome_size_Mbp
+recap_data_TEs_genome_recomb_genes$Density <- recap_data_TEs_genome_recomb_genes$Count / genome_size_Mbp
+
+# Ajouter les données demographiques de Tournebize 2022
+library(readODS)
+# Lecture des données
+pop_stats <- read_ods("~/M2/Cafeier/Codes/Matrice_indv/Data_pops_Remi_Tournebize.ods", skip = 0)
+# Nettoyage : enlever lignes de moyenne/sd
+pop_stats <- pop_stats %>%
+  filter(!(Population_Group %in% c("mean", "sd")))
+# Jointure
+recap_data_TEs_genome_recomb_genes_statsPops <- recap_data_TEs_genome_recomb_genes %>%
+  left_join(pop_stats, by = "Population_Group")
+
+
+# Visualisation ou analyse ensuite
+print(recap_data_TEs_genome_recomb_genes_statsPops)
+# Sauvegarder le résultat
+write.table(recap_data_TEs_genome_recomb_genes_statsPops, 
+          "~/M2/Cafeier/Codes/Matrice_indv/recap_data_TEs_genome_recomb_genes_with_distances_and_freqs_andStatsPops.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+### qq stats recap generales ;3
+sum(recap_data_TEs_genome_recomb_genes_statsPops$Count) -> tot_charge
+
+sum(recap_data_TEs_genome_recomb_genes_statsPops[which(recap_data_TEs_genome_recomb_genes_statsPops$Superfamily=="Gypsy"),"Count"]) -> tot_charge_gypsy
+sum(recap_data_TEs_genome_recomb_genes_statsPops[which(recap_data_TEs_genome_recomb_genes_statsPops$Superfamily=="Copia"),"Count"]) -> tot_charge_copia
+tot_charge_gypsy/tot_charge_copia -> ratio_charge_gypsy_copia
+
+sum(recap_data_TEs_genome_recomb_genes_statsPops[which(recap_data_TEs_genome_recomb_genes_statsPops$Superfamily=="Gypsy"),"Count_hetero"]) -> tot_hetero_gypsy
+sum(recap_data_TEs_genome_recomb_genes_statsPops[which(recap_data_TEs_genome_recomb_genes_statsPops$Superfamily=="Copia"),"Count_hetero"]) -> tot_hetero_copia
+tot_hetero_gypsy/tot_hetero_copia -> ratio_hetero_gypsy_copia
+
+sum(recap_data_TEs_genome_recomb_genes_statsPops[which(recap_data_TEs_genome_recomb_genes_statsPops$Superfamily=="Gypsy"),"Count_homo"]) -> tot_homo_gypsy
+sum(recap_data_TEs_genome_recomb_genes_statsPops[which(recap_data_TEs_genome_recomb_genes_statsPops$Superfamily=="Copia"),"Count_homo"]) -> tot_homo_copia
+tot_homo_gypsy/tot_homo_copia -> ratio_homo_gypsy_copia
+
+library(dplyr)
+# Étape 1 : Calcul des totaux par Superfamily et Family
+sum_counts_by_TE <- recap_data_TEs_genome_recomb_genes_statsPops %>%
+  group_by(Superfamily, Family) %>%
+  summarise(total_Count = sum(Count, na.rm = TRUE), .groups = "drop")
+
+# Étape 2 : Calcul du total par Superfamily
+sum_counts_by_superfam <- sum_counts_by_TE %>%
+  group_by(Superfamily) %>%
+  mutate(
+    superfamily_total = sum(total_Count),
+    percent = 100 * total_Count / superfamily_total
+  )
+
+# Vérification rapide
+head(sum_counts_by_superfam)
+write.table(sum_counts_by_superfam, 
+          "~/M2/Cafeier/Codes/Matrice_indv/sum_counts_by_superfam.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+```
+
+### Comparaison de la charge en TEs et du ratio heterozygotes TEs/Homozygotes TEs
+
+entre tous les groupes génétiques de canephora d'**Est vs Ouest Afrique puis entre ER et V (dont les individus sont issus (bottleneck) pour culture), test de Mann-Whitney (Wilcoxon rank-sum test) :**
+
+Le test de Wilcoxon est une alternative non paramétrique au test t pour comparer deux moyennes. C’est particulièrement recommandé dans une situation où les données ne sont pas normalement distribuées.
+
+Comme le test t, le test de Wilcoxon se présente sous deux formes : tests sur échantillon unique et sur deux échantillons.
+
+La taille de l’effet r est calculée comme étant la statistique Z divisée par la racine carrée de la taille de l’échantillon (N) (Z/sqrt(N)). La valeur Z est extraite soit de coin::wilcoxsign_test() (cas d’un test à un ou deux échantillons) ou coin::wilcox_test() (cas d’un test indépendant à deux échantillons).
+
+Notez que N correspond à la taille totale de l’échantillon pour le test d’échantillons indépendants et au nombre total de paires pour le test d’échantillons appariés. La valeur r varie de 0 à près de 1. Les valeurs d’interprétation de “r” couramment utilisées dans la littérature publiée sont : 0,10 - \< 0,3 (petit effet), 0,30 - \< 0,5 (effet modéré) et \>= 0,5 (effet important).
+
+Tirer aléatoirement un nombre d'individus égal à l'effectif de la population la plus petite entre chaque comparaison deux à deux, et réitérer 100 fois pour plus de robustesse :
+
+La fonction **wilcox_balanced_test** (script ci-après) permet de sélectionner le plus petit effectif des deux groupes comparés et d'échantillonner aléatoirement sur la base de l'effectif du plus petit groupe le groupe le plus grand. Le test de Wilcoxon est ainsi effectué sur des échantillons équilibrés.
+
+la "Charge/Proportion" par famille TEs correspond au nombre de TEs sous forme hénérozygote plus deux fois le nombre de TEs sous forme homozygote le tout divisé par deux fois le nombre de fois où il y a une observation d'un TE de la famille en question chez un individus (correspoondant au nombre de positions (diploide) où il y a insertion de cette famille TEs au sein de l'espèce de Coffea canaphora).
+
+AVEC TIRAGE ALEATOIRE SANS REMISE POUR NE PAS AVOIR DE BIAIS DU NB D'INDIVIDUS ET 100 ITERATIONS
+
+```{r}
+## Fonction :3
+wilcox_iterated_test <- function(data, group_var, value_var = "Count", group1, group2, n_iter = 100) {
+  p_values <- numeric(n_iter)
+  
+  for (i in 1:n_iter) {
+    data1 <- data %>% filter(.data[[group_var]] == group1)
+    data2 <- data %>% filter(.data[[group_var]] == group2)
+    
+    sample_size <- min(nrow(data1), nrow(data2))
+    if (sample_size < 3) return(NULL)
+    
+    sample1 <- sample(data1[[value_var]], sample_size, replace = FALSE)
+    sample2 <- sample(data2[[value_var]], sample_size, replace = FALSE)
+    
+    test <- wilcox.test(sample1, sample2, exact = FALSE)
+    p_values[i] <- test$p.value
+  }
+  
+  return(list(
+    p_min = min(p_values),
+    p_max = max(p_values),
+    p_mean = mean(p_values),
+    p_sd = sd(p_values),
+    sample_size = sample_size
+  ))
+}
+
+#### ESt vs OUEST ##########
+wilcox_results_est_ouest_bal <- lapply(unique(data_est_ouest$Family), function(fam) {
+  data_fam <- data_est_ouest %>% filter(Family == fam)
+  
+  if (length(unique(data_fam$Region)) == 2) {
+    test_result <- wilcox_iterated_test(data_fam, group_var = "Region", group1 = "Est", group2 = "Ouest", n_iter = 100)
+    
+    if (!is.null(test_result)) {
+      return(data.frame(
+        Superfamily = unique(data_fam$Superfamily),
+        Family = fam,
+        p_min = test_result$p_min,
+        p_max = test_result$p_max,
+        p_mean = test_result$p_mean,
+        p_sd = test_result$p_sd,
+        sample_size = test_result$sample_size
+      ))
+    }
+  }
+  
+  return(data.frame(Superfamily = NA, Family = fam, p_min = NA, p_max = NA, p_mean = NA, p_sd = NA, sample_size = NA))
+}) %>% bind_rows()
+
+# Correction + stats descriptives
+wilcox_results_est_ouest_bal <- wilcox_results_est_ouest_bal %>%
+  mutate(
+    p_value_adj = p.adjust(p_mean, method = "bonferroni"),
+    signif = case_when(
+      p_value_adj <= 0.001 ~ "***",
+      p_value_adj <= 0.01 ~ "**",
+      p_value_adj <= 0.05 ~ "*",
+      TRUE ~ "ns"
+    )
+  )
+# Statistiques descriptives : moyenne et écart-type par groupe
+summary_stats_est_ouest <- data_est_ouest %>%
+  group_by(Family, Superfamily, Region) %>%
+  summarise(
+    mean_count = mean(Count),
+    sd_count = sd(Count),
+    .groups = "drop"
+  ) %>%
+  pivot_wider(
+    names_from = Region,
+    values_from = c(mean_count, sd_count),
+    names_sep = "_"
+  )
+
+# Fusion avec résultats du test
+wilcox_results_est_ouest_bal <- wilcox_results_est_ouest_bal %>%
+  left_join(summary_stats_est_ouest, by = c("Family", "Superfamily"))
+
+# Sauvegarde
+write.table(wilcox_results_est_ouest_bal, 
+            "~/M2/Cafeier/Codes/Matrice_indv/Wilcox_est_ouest_v_er/wilcox_results_count_bal_Est_Ouest.txt", 
+            sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+
+
+
+### V vs ER ############
+wilcox_results_ER_V_bal <- lapply(unique(data_ER_V$Family), function(fam) {
+  data_fam <- data_ER_V %>% filter(Family == fam)
+  
+  if (length(unique(data_fam$Population_Group)) == 2) {
+    test_result <- wilcox_iterated_test(data_fam, group_var = "Population_Group", group1 = "ER", group2 = "V", n_iter = 100)
+    
+    if (!is.null(test_result)) {
+      return(data.frame(
+        Superfamily = unique(data_fam$Superfamily),
+        Family = fam,
+        p_min = test_result$p_min,
+        p_max = test_result$p_max,
+        p_mean = test_result$p_mean,
+        p_sd = test_result$p_sd,
+        sample_size = test_result$sample_size
+      ))
+    }
+  }
+  
+  return(data.frame(Superfamily = NA, Family = fam, p_min = NA, p_max = NA, p_mean = NA, p_sd = NA, sample_size = NA))
+}) %>% bind_rows()
+
+# Correction + stats
+wilcox_results_ER_V_bal <- wilcox_results_ER_V_bal %>%
+  mutate(
+    p_value_adj = p.adjust(p_mean, method = "bonferroni"),
+    signif = case_when(
+      p_value_adj <= 0.001 ~ "***",
+      p_value_adj <= 0.01 ~ "**",
+      p_value_adj <= 0.05 ~ "*",
+      TRUE ~ "ns"
+    )
+  )
+# Statistiques descriptives : moyenne et écart-type par groupe
+summary_stats_ER_V <- data_ER_V %>%
+  group_by(Family, Superfamily, Population_Group) %>%
+  summarise(
+    mean_count = mean(Count),
+    sd_count = sd(Count),
+    .groups = "drop"
+  ) %>%
+  pivot_wider(
+    names_from = Population_Group,
+    values_from = c(mean_count, sd_count),
+    names_sep = "_"
+  )
+
+# Fusion avec résultats du test
+wilcox_results_ER_V_bal <- wilcox_results_ER_V_bal %>%
+  left_join(summary_stats_ER_V, by = c("Family", "Superfamily"))
+
+
+# Sauvegarde
+write.table(wilcox_results_ER_V_bal, 
+            "~/M2/Cafeier/Codes/Matrice_indv/Wilcox_est_ouest_v_er/wilcox_results_count_bal_ER_V.txt", 
+            sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+```
+
+Pour les ratios
+
+```{r}
+## Fonction :3
+wilcox_iterated_test_Ratio <- function(data, group_var, value_var = "Ratio", group1, group2, n_iter = 100) {
+  p_values <- numeric(n_iter)
+  
+  for (i in 1:n_iter) {
+    data1 <- data %>% filter(.data[[group_var]] == group1)
+    data2 <- data %>% filter(.data[[group_var]] == group2)
+    
+    sample_size <- min(nrow(data1), nrow(data2))
+    if (sample_size < 3) return(NULL)
+    
+    sample1 <- sample(data1[[value_var]], sample_size, replace = FALSE)
+    sample2 <- sample(data2[[value_var]], sample_size, replace = FALSE)
+    
+    test <- wilcox.test(sample1, sample2, exact = FALSE)
+    p_values[i] <- test$p.value
+  }
+  
+  return(list(
+    p_min = min(p_values),
+    p_max = max(p_values),
+    p_mean = mean(p_values),
+    p_sd = sd(p_values),
+    sample_size = sample_size
+  ))
+}
+
+#### ESt vs OUEST ##########
+wilcox_results_est_ouest_bal_Ratio <- lapply(unique(data_est_ouest$Family), function(fam) {
+  data_fam <- data_est_ouest %>% filter(Family == fam)
+  
+  if (length(unique(data_fam$Region)) == 2) {
+    test_result <- wilcox_iterated_test_Ratio(data_fam, group_var = "Region", group1 = "Est", group2 = "Ouest", n_iter = 100)
+    
+    if (!is.null(test_result)) {
+      return(data.frame(
+        Superfamily = unique(data_fam$Superfamily),
+        Family = fam,
+        p_min = test_result$p_min,
+        p_max = test_result$p_max,
+        p_mean = test_result$p_mean,
+        p_sd = test_result$p_sd,
+        sample_size = test_result$sample_size
+      ))
+    }
+  }
+  
+  return(data.frame(Superfamily = NA, Family = fam, p_min = NA, p_max = NA, p_mean = NA, p_sd = NA, sample_size = NA))
+}) %>% bind_rows()
+
+# Correction + stats descriptives
+wilcox_results_est_ouest_bal_Ratio <- wilcox_results_est_ouest_bal_Ratio %>%
+  mutate(
+    p_value_adj = p.adjust(p_mean, method = "bonferroni"),
+    signif = case_when(
+      p_value_adj <= 0.001 ~ "***",
+      p_value_adj <= 0.01 ~ "**",
+      p_value_adj <= 0.05 ~ "*",
+      TRUE ~ "ns"
+    )
+  )
+# Statistiques descriptives : moyenne et écart-type par groupe
+summary_stats_est_ouest_Ratio <- data_est_ouest %>%
+  group_by(Family, Superfamily, Region) %>%
+  summarise(
+    mean_Ratio = mean(Ratio),
+    sd_Ratio = sd(Ratio),
+    .groups = "drop"
+  ) %>%
+  pivot_wider(
+    names_from = Region,
+    values_from = c(mean_Ratio, sd_Ratio),
+    names_sep = "_"
+  )
+
+# Fusion avec résultats du test
+wilcox_results_est_ouest_bal_Ratio <- wilcox_results_est_ouest_bal_Ratio %>%
+  left_join(summary_stats_est_ouest_Ratio, by = c("Family", "Superfamily"))
+
+# Sauvegarde
+write.table(wilcox_results_est_ouest_bal_Ratio, 
+            "~/M2/Cafeier/Codes/Matrice_indv/Wilcox_est_ouest_v_er/wilcox_results_Ratio_bal_Est_Ouest.txt", 
+            sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+
+
+
+### V vs ER ############
+wilcox_results_ER_V_bal_Ratio <- lapply(unique(data_ER_V$Family), function(fam) {
+  data_fam <- data_ER_V %>% filter(Family == fam)
+  
+  if (length(unique(data_fam$Population_Group)) == 2) {
+    test_result <- wilcox_iterated_test_Ratio(data_fam, group_var = "Population_Group", group1 = "ER", group2 = "V", n_iter = 100)
+    
+    if (!is.null(test_result)) {
+      return(data.frame(
+        Superfamily = unique(data_fam$Superfamily),
+        Family = fam,
+        p_min = test_result$p_min,
+        p_max = test_result$p_max,
+        p_mean = test_result$p_mean,
+        p_sd = test_result$p_sd,
+        sample_size = test_result$sample_size
+      ))
+    }
+  }
+  
+  return(data.frame(Superfamily = NA, Family = fam, p_min = NA, p_max = NA, p_mean = NA, p_sd = NA, sample_size = NA))
+}) %>% bind_rows()
+
+# Correction + stats
+wilcox_results_ER_V_bal_Ratio <- wilcox_results_ER_V_bal_Ratio %>%
+  mutate(
+    p_value_adj = p.adjust(p_mean, method = "bonferroni"),
+    signif = case_when(
+      p_value_adj <= 0.001 ~ "***",
+      p_value_adj <= 0.01 ~ "**",
+      p_value_adj <= 0.05 ~ "*",
+      TRUE ~ "ns"
+    )
+  )
+# Statistiques descriptives : moyenne et écart-type par groupe
+summary_stats_ER_V_Ratio <- data_ER_V %>%
+  group_by(Family, Superfamily, Population_Group) %>%
+  summarise(
+    mean_Ratio = mean(Ratio),
+    sd_Ratio = sd(Ratio),
+    .groups = "drop"
+  ) %>%
+  pivot_wider(
+    names_from = Population_Group,
+    values_from = c(mean_Ratio, sd_Ratio),
+    names_sep = "_"
+  )
+
+# Fusion avec résultats du test
+wilcox_results_ER_V_bal_Ratio <- wilcox_results_ER_V_bal_Ratio %>%
+  left_join(summary_stats_ER_V_Ratio, by = c("Family", "Superfamily"))
+
+
+# Sauvegarde
+write.table(wilcox_results_ER_V_bal_Ratio, 
+            "~/M2/Cafeier/Codes/Matrice_indv/Wilcox_est_ouest_v_er/wilcox_results_Ratio_bal_ER_V.txt", 
+            sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+```
+
+```{r}
+### fonction tirage aleas sans remise
+wilcox_balanced_test_Ratio <- function(data, group_var, value_var = "Ratio", group1, group2) {
+  data1 <- data %>% filter(.data[[group_var]] == group1)
+  data2 <- data %>% filter(.data[[group_var]] == group2)
+  
+  sample_size <- min(nrow(data1), nrow(data2))
+  
+  if (sample_size < 3) return(NULL)  # Trop peu d'individus
+  
+  sample1 <- sample(data1[[value_var]], sample_size, replace = FALSE)
+  sample2 <- sample(data2[[value_var]], sample_size, replace = FALSE)
+  
+  test <- wilcox.test(sample1, sample2, exact = FALSE)
+  
+  return(list(
+    p_value = test$p.value,
+    statistic = test$statistic,
+    sample_size = sample_size
+  ))
+}
+
+# EST vs OUEST ########################################
+recap_data_TEs_genome_recomb_genes <- recap_data_TEs_genome_recomb_genes %>%
+  mutate(Region = case_when(
+    Population_Group %in% c("ER", "OB", "hb") ~ "Est",
+    Population_Group %in% c("AG", "D", "C") ~ "Ouest",
+    TRUE ~ NA_character_
+  )) # creer colonne region
+
+# Filtrer données valides
+data_est_ouest <- recap_data_TEs_genome_recomb_genes %>%
+  filter(Region %in% c("Est", "Ouest"))
+
+# Appliquer Wilcoxon équilibré par famille
+wilcox_results_est_ouest_bal_Ratio <- lapply(unique(data_est_ouest$Family), function(fam) {
+  data_fam <- data_est_ouest %>% filter(Family == fam)
+  
+  if (length(unique(data_fam$Region)) == 2) {
+    test_result <- wilcox_balanced_test_Ratio(data_fam, group_var = "Region", group1 = "Est", group2 = "Ouest")
+    
+    if (!is.null(test_result)) {
+      return(data.frame(
+        Superfamily = unique(data_fam$Superfamily),
+        Family = fam,
+        p_value = test_result$p_value,
+        statistic = test_result$statistic,
+        sample_size = test_result$sample_size
+      ))
+    }
+  }
+  
+  return(data.frame(Superfamily = NA, Family = fam, p_value = NA, statistic = NA, sample_size = NA))
+}) %>% bind_rows()
+
+# Correction + stats descriptives
+wilcox_results_est_ouest_bal_Ratio <- wilcox_results_est_ouest_bal_Ratio %>%
+  mutate(
+    p_value_adj = p.adjust(p_value, method = "bonferroni"),
+    signif = case_when(
+      p_value_adj <= 0.001 ~ "***",
+      p_value_adj <= 0.01 ~ "**",
+      p_value_adj <= 0.05 ~ "*",
+      TRUE ~ "ns"
+    )
+  )
+# Statistiques descriptives : moyenne et écart-type par groupe
+summary_stats_est_ouest <- data_est_ouest %>%
+  group_by(Family, Superfamily, Region) %>%
+  summarise(
+    mean_Ratio = mean(Ratio),
+    sd_Ratio = sd(Ratio),
+    .groups = "drop"
+  ) %>%
+  pivot_wider(
+    names_from = Region,
+    values_from = c(mean_Ratio, sd_Ratio),
+    names_sep = "_"
+  )
+
+# Fusion avec résultats du test
+wilcox_results_est_ouest_bal_Ratio <- wilcox_results_est_ouest_bal_Ratio %>%
+  left_join(summary_stats_est_ouest, by = c("Family", "Superfamily"))
+
+# Sauvegarde
+write.table(wilcox_results_est_ouest_bal_Ratio, 
+            "~/M2/Cafeier/Codes/Matrice_indv/Wilcox_est_ouest_v_er/wilcox_results_Ratio_bal_Est_Ouest.txt", 
+            sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+#  ER vs V ##################################################"
+data_ER_V <- recap_data_TEs_genome_recomb_genes %>%
+  filter(Population_Group %in% c("ER", "V"))
+
+# Appliquer Wilcoxon équilibré
+wilcox_results_ER_V_bal_Ratio <- lapply(unique(data_ER_V$Family), function(fam) {
+  data_fam <- data_ER_V %>% filter(Family == fam)
+  
+  if (length(unique(data_fam$Population_Group)) == 2) {
+    test_result <- wilcox_balanced_test_Ratio(data_fam, group_var = "Population_Group", group1 = "ER", group2 = "V")
+    
+    if (!is.null(test_result)) {
+      return(data.frame(
+        Superfamily = unique(data_fam$Superfamily),
+        Family = fam,
+        p_value = test_result$p_value,
+        statistic = test_result$statistic,
+        sample_size = test_result$sample_size
+      ))
+    }
+  }
+  
+  return(data.frame(Superfamily = NA, Family = fam, p_value = NA, statistic = NA, sample_size = NA))
+}) %>% bind_rows()
+
+# Correction + stats
+wilcox_results_ER_V_bal_Ratio <- wilcox_results_ER_V_bal_Ratio %>%
+  mutate(
+    p_value_adj = p.adjust(p_value, method = "bonferroni"),
+    signif = case_when(
+      p_value_adj <= 0.001 ~ "***",
+      p_value_adj <= 0.01 ~ "**",
+      p_value_adj <= 0.05 ~ "*",
+      TRUE ~ "ns"
+    )
+  )
+# Statistiques descriptives : moyenne et écart-type par groupe
+summary_stats_ER_V <- data_ER_V %>%
+  group_by(Family, Superfamily, Population_Group) %>%
+  summarise(
+    mean_Ratio = mean(Ratio),
+    sd_Ratio = sd(Ratio),
+    .groups = "drop"
+  ) %>%
+  pivot_wider(
+    names_from = Population_Group,
+    values_from = c(mean_Ratio, sd_Ratio),
+    names_sep = "_"
+  )
+
+# Fusion avec résultats du test
+wilcox_results_ER_V_bal_Ratio <- wilcox_results_ER_V_bal_Ratio %>%
+  left_join(summary_stats_ER_V, by = c("Family", "Superfamily"))
+
+
+# Sauvegarde
+write.table(wilcox_results_ER_V_bal_Ratio, 
+            "~/M2/Cafeier/Codes/Matrice_indv/Wilcox_est_ouest_v_er/wilcox_results_Ratio_bal_ER_V.txt", 
+            sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+```
+
+```{r}
+# representation boxplot avec binom test hetero homo
+library(ggplot2)
+library(gridExtra)
+library(dplyr)
+
+
+# Recalcul des tests binomiaux
+test_results <- recap_data_TEs_genome_recomb_genes %>%
+  group_by(Superfamily, Family, Population_Group) %>%
+  summarise(
+    n_hetero = sum(Count_hetero, na.rm = TRUE),
+    n_homo = sum(Count_homo, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  rowwise() %>%
+  mutate(
+    total = n_hetero + n_homo,
+    test = list(binom.test(n_hetero, total, p = 0.5, alternative = "greater")),
+    p_value = test$p.value,
+    Significance = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01  ~ "**",
+      p_value < 0.05  ~ "*",
+      TRUE            ~ "ns"
+    )
+  ) %>%
+  select(Superfamily, Family, Population_Group, p_value, Significance)
+
+# Fusionner les résultats du test avec les données originales
+data_with_signif <- recap_data_TEs_genome_recomb_genes %>%
+  left_join(test_results, by = c("Superfamily", "Family", "Population_Group"))
+
+
+# Exemple : afficher les familles Gypsy uniquement
+gypsy_data <- data_with_signif %>%
+  filter(Superfamily == "Gypsy")
+
+# Créer le graphique
+plot_gypsy_by_pop <- ggplot(gypsy_data, aes(x = Population_Group, y = Ratio, fill = Population_Group)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1, linetype = "solid", color = "red", linewidth = 0.3) +
+  facet_wrap(~Family, scales = "free_y") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+    plot.title = element_text(hjust = 0.1, face = "bold", size = 13)
+  ) +
+  labs(
+    title = "Ratio TEs hétérozygotes/homozygotes par groupe génétique",
+    subtitle = "Gypsy",
+    x = "Groupe génétique",
+    y = "Ratio TEs hétérozygotes/homozygotes",
+    fill = "Groupe génétique"
+  ) +
+  scale_fill_viridis_d(option = "plasma") +
+  
+  # Ajouter les étoiles de significativité
+  geom_text(
+    data = gypsy_data %>%
+      distinct(Population_Group, Family, Significance),
+    aes(x = Population_Group, y = 1.08 * max(gypsy_data$Ratio, na.rm = TRUE), label = Significance),
+    color = "black", size = 4, fontface = "bold"
+  )
+
+
+copia_data <- data_with_signif %>%
+  filter(Superfamily == "Copia")
+
+# Créer le graphique
+plot_copia_by_pop <- ggplot(copia_data, aes(x = Population_Group, y = Ratio, fill = Population_Group)) +
+  geom_boxplot() +
+  geom_hline(yintercept = 1, linetype = "solid", color = "red", linewidth = 0.3) +
+  facet_wrap(~Family, scales = "free_y") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 10),
+    plot.title = element_text(hjust = 0.5, face = "bold", size = 14)
+  ) +
+  labs(
+    title ="",
+    subtitle = "Copia",
+    x = "Groupe génétique",
+    y = "Ratio TEs hétérozygotes/homozygotes",
+    fill = "Groupe génétique"
+  ) +
+  scale_fill_viridis_d(option = "plasma") +
+  
+  # Ajouter les étoiles de significativité
+  geom_text(
+    data = copia_data %>%
+      distinct(Population_Group, Family, Significance),
+    aes(x = Population_Group, y = 1.08 * max(copia_data$Ratio, na.rm = TRUE), label = Significance),
+    color = "black", size = 4, fontface = "bold"
+  )
+
+
+plot_gypsy_by_pop
+plot_copia_by_pop
+
+# Afficher les graphiques
+grid.arrange(plot_gypsy_by_pop, plot_copia_by_pop, ncol = 2)
+```
+
+### Spectres de fréquences
+
+```{r}
+##### GENERAL all TEs #####
+# Extraire la colonne des fréquences
+freq <- recap_data_TEs_genome_recomb_genes_statsPops$Allele_Freq_Pop_Group
+
+# Créer un histogramme du spectre des fréquences
+hist(freq,
+     breaks = seq(0, 1, by = 0.01),  # classes de fréquence de 5 %
+     main = "Spectre de fréquences allélique du contenu total en TEs",
+     xlab = "Fréquence TEs",
+     ylab = "Nombre de TEs",
+     col = "darkgreen",
+     border = "white")
+
+
+library(ggplot2)
+library(viridis)# coloooorsss ohhhhh:3
+
+# Filtrage des données par superfamille
+data_copia <- subset(recap_data_TEs_genome_recomb_genes_statsPops, Superfamily == "Copia")
+data_gypsy <- subset(recap_data_TEs_genome_recomb_genes_statsPops, Superfamily == "Gypsy")
+
+
+########### !!!! classes de fréquence de 0.01 (plus détaillé) ^^
+## gyopsy famillllllles:3
+ggplot(data_gypsy, aes(x = Allele_Freq_Pop_Group, fill = Family)) +
+  geom_histogram(binwidth = 0.03, color = "white") +
+  facet_wrap(~ Family, scales = "free_y") +
+  scale_fill_viridis_d(option = "plasma", guide = "none") +
+  xlim(0, 1) +
+  theme_minimal(base_size = 12) +
+  labs(
+    title = "Spectre de fréquences allélique du contenu en TEs – Gypsy",
+    x = "Fréquence TEs",
+    y = "Nombre de TEs"
+  ) +
+  theme(strip.text = element_text(face = "bold", size = 10))+
+  theme_light()
+
+
+
+## copia ;)))
+ggplot(data_copia, aes(x = Allele_Freq_Pop_Group, fill = Family)) +
+  geom_histogram(binwidth = 0.03, color = "white") +
+  facet_wrap(~ Family, scales = "free_y") +
+  scale_fill_viridis_d(option = "viridis", guide = "none") +
+  theme_minimal(base_size = 12) +
+  xlim(0, 1) +
+  labs(
+    title = "Spectre de fréquences allélique du contenu en TEs – Copia",
+    x = "Fréquence TEs",
+    y = "Nombre de TEs"
+  ) +
+  theme(strip.text = element_text(face = "bold", size = 10))+
+  theme_light()
+
+
+
+
+```
+
+### Caractéristiques populationnelles : démographie
+
+```{r}
+
+library(dplyr)
+library(psych)
+library(purrr)
+library(tidyr)
+
+# Choix des variables de traits génomiques à corréler
+traits <- c("teta_div_nuc_paired", "mu_Watterson", "Observed_heterozygosity",
+            "Tajima_D", "Fay_Wu_H", "Lddecay", "rho", "mu_sur_rho")
+
+# Données à tester
+test_vars <- c("Count", "Ratio", "Allele_Freq_Pop_Group")
+
+# Filtrer pour éviter les NA dans les variables choisies
+filtered_data_corr_demog <- recap_data_TEs_genome_recomb_genes_statsPops %>% 
+  select(Superfamily, Family, Population_Group, all_of(test_vars), all_of(traits)) %>%
+  drop_na()
+
+# Calculer les corrélations par Family
+cor_results <- filtered_data_corr_demog %>%
+  group_by(Superfamily, Family) %>%
+  group_split() %>%
+  map_df(function(df) {
+    df_traits <- df %>% select(all_of(test_vars), all_of(traits))
+    
+    if (nrow(df_traits) >= 3) {
+      ct <- psych::corr.test(df_traits)
+      
+      # Convertir matrice de corrélation en long format
+      cor_long <- as.data.frame(as.table(ct$r)) %>%
+        rename(var1 = Var1, var2 = Var2, correlation = Freq) %>%
+        mutate(p_value = as.vector(ct$p),
+               Superfamily = unique(df$Superfamily),
+               Family = unique(df$Family))
+      
+      return(cor_long)
+    } else {
+      return(NULL)
+    }
+  })
+cor_results
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(patchwork)
+
+# Filtrer les données en excluant Vet et HB
+recap_data_TEs_genome_recomb_genes_statsPops_sansVhb <- recap_data_TEs_genome_recomb_genes_statsPops %>%
+  filter(!Population_Group %in% c("V", "hb"))
+
+# Calculer les corrélations pour chaque famille
+correlations_teta_div_nuc_paired <- recap_data_TEs_genome_recomb_genes_statsPops_sansVhb %>%
+  group_by(Superfamily, Family) %>%
+  summarize(
+    correlation = cor(Count, teta_div_nuc_paired, method = "pearson"),
+    p_value = cor.test(Count, teta_div_nuc_paired)$p.value,
+    .groups = "drop")
+
+# Afficher un tableau récapitulatif des corrélations
+summary_teta_div_nuc_paired <- correlations_teta_div_nuc_paired %>%
+  arrange(Superfamily, desc(abs(correlation))) %>%
+  mutate(
+    p_value_cat = case_when(
+      p_value < 0.001 ~ "***",
+      p_value < 0.01 ~ "**",
+      p_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    ),
+    correlation = round(correlation, 3)
+  ) %>%
+  select(Superfamily, Family, correlation, p_value_cat, n)
+
+print(summary_teta_div_nuc_paired)
+
+
+
+
+
+# Créer les graphiques par superfamille
+create_plots <- function(superfamily_name) {
+  # Filtrer les données pour une superfamille spécifique
+  super_data <- recap_data_TEs_genome_recomb_genes_statsPops %>% 
+    filter(Superfamily == superfamily_name)
+  
+  # Récupérer les familles ayant une corrélation valide
+  valid_families <- correlations %>% 
+    filter(Superfamily == superfamily_name) %>% 
+    pull(Family)
+  
+  # Filtrer pour les familles valides
+  super_data <- super_data %>% 
+    filter(Family %in% valid_families)
+  
+  # Obtenir les statistiques de corrélation pour les annotations
+  cor_stats <- correlations %>% 
+    filter(Superfamily == superfamily_name)
+  
+  # Créer un graphique pour chaque famille
+  plots <- lapply(valid_families, function(fam) {
+    fam_data <- super_data %>% filter(Family == fam)
+    cor_value <- cor_stats %>% 
+      filter(Family == fam) %>% 
+      pull(correlation) %>% 
+      round(3)
+    p_value <- cor_stats %>% 
+      filter(Family == fam) %>% 
+      pull(p_value)
+    
+    # Formater la valeur p
+    p_text <- if(p_value < 0.001) {
+      "p < 0.001"
+    } else if(p_value < 0.05) {
+      paste0("p = ", round(p_value, 3))
+    } else {
+      paste0("p = ", round(p_value, 3), " (ns)")
+    }
+    
+    # Créer le graphique
+    ggplot(fam_data, aes(x = teta_div_nuc_paired, y = Count)) +
+      geom_point(alpha = 0.7) +
+      geom_smooth(method = "lm", se = TRUE, color = "blue") +
+      labs(
+        title = paste0(fam),
+        subtitle = paste0("r = ", cor_value, ", ", p_text),
+        y = "Count",
+        x = "θ (div. nucléotidique)"
+      ) +
+      theme_bw() +
+      theme(
+        plot.title = element_text(face = "bold"),
+        plot.subtitle = element_text(size = 9)
+      )
+  })
+  
+  return(plots)
+}
+
+# Créer les graphiques pour chaque superfamille
+gypsy_plots <- create_plots("Gypsy")
+copia_plots <- create_plots("Copia")
+
+# Fonction pour arranger les graphiques en grille
+arrange_plots <- function(plot_list, title) {
+  if(is.null(plot_list) || length(plot_list) == 0) {
+    return(ggplot() + 
+             annotate("text", x = 0.5, y = 0.5, 
+                      label = paste("Pas de données suffisantes pour", title)) +
+             theme_void())
+  }
+  
+  # Déterminer le layout optimal
+  n_plots <- length(plot_list)
+  n_cols <- min(3, n_plots)  # Max 3 colonnes
+  
+  # Combiner avec patchwork
+  combined <- wrap_plots(plot_list, ncol = n_cols) +
+    plot_annotation(
+      title = paste("Corrélations pour la superfamille", title),
+      theme = theme(plot.title = element_text(size = 14, face = "bold"))
+    )
+  
+  return(combined)
+}
+
+# Arranger les graphiques
+gypsy_arranged <- arrange_plots(gypsy_plots, "Gypsy")
+copia_arranged <- arrange_plots(copia_plots, "Copia")
+
+# Afficher les graphiques
+print(gypsy_arranged)
+print(copia_arranged)
+
+# Sauvegarder les graphiques si nécessaire
+#ggsave("correlations_gypsy.png", gypsy_arranged, width = 12, height = ceiling(length(gypsy_plots)/3) * 4)
+#ggsave("correlations_copia.png", copia_arranged, width = 12, height = ceiling(length(copia_plots)/3) * 4)
+```
+
+```{r}
+gypsy_plot <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Gypsy") %>%
+  ggplot(aes(x = teta_div_nuc_paired, y = Count, color = Family)) +
+  
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  labs(
+    title = "Abondances des familles TEs en fonction de la diversité nucléotidique des groupes génétiques de caféiers robusta",
+    subtitle ="",
+    x = "Teta (div nucléotidique)", 
+    y = "Abondance TEs"
+  ) +
+  theme_minimal()  +
+  scale_fill_viridis_d(option = "plasma")
+
+copia_plot <- filtered_data_corr_demog %>%
+  filter(Superfamily == "Copia") %>%
+  ggplot(aes(x = teta_div_nuc_paired, y = Count, color = Family)) +
+  
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~ Family, scales = "free_y") +
+  labs(
+    subtitle = "Copia",
+    x = "Teta (div nucléotidique)", 
+    y = "Abondance TEs"
+  ) +
+  theme_minimal()+
+  scale_fill_viridis_d(option = "viridis")
+
+gypsy_plot
+copia_plot
+library(gridExtra)
+grid.arrange(gypsy_plot, copia_plot, ncol=2)
+```
+
+!!! voir code regression pour ratio count et freq en fonction des 8 facteurs demographiques !!!
+
+# Par chromosome
+
+```{r}
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Reformater aussi les noms de colonnes
+colnames(genes_closest_to_TEs_withIndv) <- gsub("-", ".", colnames(genes_closest_to_TEs_withIndv))
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer une liste de populations basée sur Group_analysis
+populations <- split(correspondance$formatted_id, correspondance$Group_analysis)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+
+# Fonction pour calculer les fréquences alléliques par chromosome, population et famille
+calculate_allele_freq_by_chr_pop <- function(data_chr, pop_ids, superfamily, family) {
+  # Filtrer les données pour cette famille et ce superfamily
+  data_subset <- data_chr[data_chr$Superfamily == superfamily & data_chr$Family == family, ]
+  
+  # S'assurer qu'il y a des données
+  if (nrow(data_subset) == 0) {
+    return(NULL)
+  }
+  
+  # Filtrer les colonnes correspondant à cette population
+  pop_cols <- intersect(pop_ids, colnames(data_subset))
+  
+  if (length(pop_cols) == 0) {
+    return(NULL)
+  }
+  
+  # Pour les données diploïdes: calculer le nombre total d'allèles 
+  # Pour chaque individu: 0=0 allèles/abs de TE, 1=1 allèle/hétérozygote TE, 2=2 allèles homozygote TEs
+  total_alleles <- sum(as.matrix(data_subset[, pop_cols]), na.rm = TRUE)
+  
+  # Calculer le nombre maximum d'allèles possibles (2 par individu non-NA)
+  max_alleles <- 2 * sum(!is.na(as.matrix(data_subset[, pop_cols])))
+  
+  # Calculer la fréquence allélique (nombre d'allèles / nombre max d'allèles)
+  allele_freq <- if(max_alleles > 0) total_alleles / max_alleles else 0
+  
+  return(allele_freq)
+}
+
+# Récupérer les chromosomes uniques depuis genes_closest_to_TEs_withIndv
+chromosomes <- unique(genes_closest_to_TEs_withIndv$TE_chrom)
+
+# Dataframe pour stocker les résultats
+recap_data_TEs_chr_recomb_genes <- data.frame()
+
+# Identifier les colonnes qui contiennent les données des individus
+# Créer une liste de tous les IDs d'individus valides
+all_valid_indiv_ids <- unlist(all_pops)
+
+# Identifier les colonnes qui correspondent à des individus valides
+indiv_cols <- which(colnames(genes_closest_to_TEs_withIndv) %in% all_valid_indiv_ids)
+
+# Si aucune colonne d'individu n'est trouvée, utiliser l'ancienne méthode
+if (length(indiv_cols) == 0) {
+  indiv_cols_start <- 23  # Ajustez ce numéro selon votre dataframe exact
+  indiv_cols_end <- ncol(genes_closest_to_TEs_withIndv) - 1  # Ajustez si nécessaire
+}
+
+# Liste de toutes les populations
+all_pops <- list(
+  A = pop_A, G = pop_G, C = pop_C, D = pop_D, hb = pop_hb,
+  B = pop_B, O = pop_O, E = pop_E, R = pop_R, V = pop_V
+)
+
+# Définir les groupes de populations
+pop_groups <- list(
+  AG = c(pop_A, pop_G),
+  C = pop_C,
+  D = pop_D,
+  hb = pop_hb,
+  OB = c(pop_O, pop_B),
+  ER = c(pop_E, pop_R),
+  V = pop_V
+)
+
+# Boucle sur les chromosomes
+for (chrom in chromosomes) {
+  data_chr <- genes_closest_to_TEs_withIndv %>% filter(TE_chrom == chrom)
+  
+  # Obtenir toutes les familles uniques pour Gypsy et Copia
+  gypsy_families <- unique(data_chr$Family[data_chr$Superfamily == "Gypsy"])
+  copia_families <- unique(data_chr$Family[data_chr$Superfamily == "Copia"])
+  
+  # Si nous avons trouvé des colonnes d'individus valides spécifiquement
+  if (exists("indiv_cols") && length(indiv_cols) > 0) {
+    indiv_indices <- indiv_cols
+  } else {
+    # Sinon utiliser l'ancienne méthode avec des indices séquentiels
+    indiv_indices <- indiv_cols_start:indiv_cols_end
+  }
+  
+  # Boucle sur chaque individu (chaque colonne correspondant à un individu)
+  for (i in indiv_indices) {
+    indiv_name <- colnames(data_chr)[i]
+    
+    # Vérifier si le nom de la colonne est un nom d'individu valide
+    # en s'assurant qu'il est présent dans une des populations et n'est pas une colonne comme "ID"
+    if (is.na(indiv_name) || !any(sapply(all_pops, function(p) indiv_name %in% p))) {
+      next
+    }
+    
+    # Déterminer la population de l'individu
+    pop <- "Unknown"
+    if (indiv_name %in% pop_A) pop <- "A"
+    else if (indiv_name %in% pop_G) pop <- "G"
+    else if (indiv_name %in% pop_C) pop <- "C"
+    else if (indiv_name %in% pop_D) pop <- "D"
+    else if (indiv_name %in% pop_hb) pop <- "hb"
+    else if (indiv_name %in% pop_B) pop <- "B"
+    else if (indiv_name %in% pop_O) pop <- "O"
+    else if (indiv_name %in% pop_E) pop <- "E"
+    else if (indiv_name %in% pop_R) pop <- "R"
+    else if (indiv_name %in% pop_V) pop <- "V"
+
+    # Fonction pour traiter chaque famille
+    process_family <- function(family, superfamily) {
+      # S'assurer que la colonne est numérique
+      if (!is.numeric(data_chr[[i]])) {
+        data_chr[[i]] <- as.numeric(as.character(data_chr[[i]]))
+      }
+      
+      subset_data <- data_chr[data_chr$Superfamily == superfamily & data_chr$Family == family, ]
+      
+      # S'assurer qu'il y a des données pour cette combinaison
+      if (nrow(subset_data) == 0) {
+        return()  # Sortir de la fonction si pas de données
+      }
+      
+      total_family <- nrow(subset_data)
+      sum_family <- sum(subset_data[[i]], na.rm = TRUE)
+      count_hetero_family <- sum(subset_data[[i]] == 1, na.rm = TRUE)
+      count_homo_family <- sum(subset_data[[i]] == 2, na.rm = TRUE)
+      count_abs_family <- sum(subset_data[[i]] == 0, na.rm = TRUE)
+      TEs_load <- count_hetero_family + (2 * count_homo_family)
+      
+      # Calcul de la distance moyenne aux gènes pour cette famille
+      mean_gene_distance <- mean(subset_data$TE_Gene_distance, na.rm = TRUE)
+      
+      # Calcul du taux de recombinaison moyen par famille 
+      mean_recomb_rate <- mean(subset_data$recombination_rate, na.rm = TRUE)
+      
+      # Déterminer le groupe de population de l'individu
+      pop_group <- "Unknown"
+      if (pop %in% c("A", "G")) pop_group <- "AG"
+      else if (pop == "C") pop_group <- "C"
+      else if (pop == "D") pop_group <- "D"
+      else if (pop == "hb") pop_group <- "hb"
+      else if (pop %in% c("B", "O")) pop_group <- "OB"
+      else if (pop %in% c("E", "R")) pop_group <- "ER"
+      else if (pop == "V") pop_group <- "V"
+      
+      # Calcul des fréquences alléliques par groupe de population
+      allele_freq <- NA
+      if (pop_group != "Unknown") {
+        pop_ids <- pop_groups[[pop_group]]
+        allele_freq <- calculate_allele_freq_by_chr_pop(data_chr, pop_ids, superfamily, family)
+      }
+      
+      new_row <- data.frame(
+        Chromosome = chrom,
+        Individual = indiv_name, 
+        Population = pop,
+        Population_Group = pop_group,
+        Superfamily = superfamily,
+        Family = family,
+        Count = sum_family,
+        Count_hetero = count_hetero_family,
+        Count_homo = count_homo_family,
+        Ratio = ifelse(count_homo_family == 0, NA, count_hetero_family / count_homo_family),
+        Total = total_family,
+        Mean_Gene_Distance = mean_gene_distance,
+        Mean_Recombination_Rate = mean_recomb_rate,
+        Allele_Freq_Pop_Group = allele_freq  # Ajout de la fréquence allélique par groupe de population
+      )
+      
+      recap_data_TEs_chr_recomb_genes <<- rbind(recap_data_TEs_chr_recomb_genes, new_row)
+    }
+
+    # Appliquer la fonction à chaque famille
+    lapply(gypsy_families, process_family, superfamily = "Gypsy")
+    lapply(copia_families, process_family, superfamily = "Copia")
+  }
+}
+
+# Réorganiser les niveaux
+recap_data_TEs_chr_recomb_genes$Population_Group <- factor(recap_data_TEs_chr_recomb_genes$Population_Group,
+                                             levels = c("D", "C", "AG", "hb", "ER", "OB", "V", "Unknown"))
+
+# Ajouter la longueur des chr extraites du fa.fai genome ref
+chr_length <- read.table("~/M2/Cafeier/Codes/TEs/Coffea_canephora_chr_length.txt", header=TRUE, sep="\t")
+
+# Assurer la correspondance des noms de chromosomes
+recap_data_TEs_chr_recomb_genes <- merge(recap_data_TEs_chr_recomb_genes, chr_length, by = "Chromosome", all.x = TRUE)
+
+# Rajouter une densité en TEs par chromosome
+recap_data_TEs_chr_recomb_genes <- recap_data_TEs_chr_recomb_genes %>%
+  mutate(chr_length = as.numeric(chr_length),
+         chr_length_Mbp = chr_length / 1e6,  # convertir en Mb
+         Density = Count / chr_length_Mbp)
+
+# Visualisation ou analyse ensuite
+print(recap_data_TEs_chr_recomb_genes)
+
+# Sauvegarder le résultat
+write.table(recap_data_TEs_chr_recomb_genes, 
+          "~/M2/Cafeier/Codes/Matrice_indv/recap_data_TEs_chr_recomb_genes_with_distances_and_freqs.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+```
+
+rajouter taille en cM\*
+
+```{r}
+# Fonction pour calculer la taille cumulée en cM par chromosome
+calculate_cm_size <- function(recomb_data) {
+  # La fenêtre semble être de 0.1 Mbp d'après vos données (différence entre lignes consécutives)
+  window_size <- 0.1
+  
+  # Ne considérer que les lignes avec des taux de recombinaison non-NA
+  recomb_clean <- recomb_data %>% 
+    filter(!is.na(rec.rate))
+  
+  # Calculer la taille cumulée en cM (rec.rate * window_size)
+  cm_size <- sum(recomb_clean$rec.rate * window_size)
+  
+  return(cm_size)
+}
+
+# Calculer la taille cumulée en cM pour chaque chromosome
+cm_sizes <- c(
+  calculate_cm_size(recomb_chr1),
+  calculate_cm_size(recomb_chr2),
+  calculate_cm_size(recomb_chr3),
+  calculate_cm_size(recomb_chr4),
+  calculate_cm_size(recomb_chr5),
+  calculate_cm_size(recomb_chr6),
+  calculate_cm_size(recomb_chr7),
+  calculate_cm_size(recomb_chr8),
+  calculate_cm_size(recomb_chr9),
+  calculate_cm_size(recomb_chr10)
+)
+# Dataframe de correspondance entre les chromosomes et  tailles en cM
+# Extraction des numéros de chromosomes depuis les noms
+chr_names <- paste0("CC1.8.Chr", formatC(1:11, width=2, flag="0"))
+
+#vecteur de tailles cM 
+all_cm_sizes <- c(cm_sizes, NA)  #  NA pour le chromosome 11 manquant
+
+# Créer le dataframe de correspondance
+chr_cm_mapping <- data.frame(
+  Chromosome = chr_names,
+  chr_size_cM = all_cm_sizes
+)
+
+# Maintenant, ajoutez cette colonne àu dataframe
+library(dplyr)
+recap_data_TEs_chr_recomb_genes <- recap_data_TEs_chr_recomb_genes %>%
+  left_join(chr_cm_mapping, by = "Chromosome")
+
+print(recap_data_TEs_chr_recomb_genes)
+```
+
+#### Visualisation barplot taille chr count TEs
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(viridis)
+library(patchwork)
+
+# Préparation des données
+bar_data <- recap_data_TEs_chr_recomb_genes %>%
+  group_by(Chromosome, Family, Superfamily) %>%
+  reframe(Count = Count) %>%
+  ungroup()
+
+# Extraire les longueurs des chromosomes
+chr_lengths <- recap_data_TEs_chr_recomb_genes %>%
+  select(Chromosome, chr_length_Mbp) %>%
+  distinct()
+
+# Créer deux jeux de données
+bar_data_gypsy <- bar_data %>% filter(Superfamily == "Gypsy")
+bar_data_copia <- bar_data %>% filter(Superfamily == "Copia")
+
+# Définir les limites maximales pour les deux axes en fonction des valeurs de count de TE par chz
+max_y_primary_gypsy <- max(aggregate(Count ~ Chromosome, bar_data_gypsy, sum)$Count)
+max_y_primary_copia <- max(aggregate(Count ~ Chromosome, bar_data_copia, sum)$Count)
+max_y_secondary <- 80  # Limite maximale pour l'axe secondaire
+
+# Calculer les facteurs de conversion
+convert_gypsy <- max_y_secondary / max_y_primary_gypsy
+convert_copia <- max_y_secondary / max_y_primary_copia
+
+# Ajouter un décalage pour élever la ligne au-dessus des barres
+# Décalage d'environ 10% au-dessus de la hauteur maximale des barres
+offset_gypsy <- max_y_primary_gypsy * 0.1
+offset_copia <- max_y_primary_copia * 0.1
+
+# Graphique pour Gypsy avec axe secondaire
+p1 <- ggplot(bar_data_gypsy, aes(x = Chromosome, y = Count, fill = Family)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_viridis_d(option = "plasma", name = "Family") +
+  # Définir les limites des axes Y et ajouter l'axe secondaire
+  scale_y_continuous(
+    name = "Nombre d'insertions TEs",
+    limits = c(0, max_y_primary_gypsy * 1.15),  # Augmenter la limite pour accommoder le décalage
+    sec.axis = sec_axis(~ . * convert_gypsy, name = "Taille du chromosome (Mbp)", breaks = seq(0, 80, 10))
+  ) +
+  # Ajouter les points pour représenter la taille des chromosomes avec un décalage
+  geom_point(data = chr_lengths, aes(x = Chromosome, y = (chr_length_Mbp / convert_gypsy) + offset_gypsy), 
+             inherit.aes = FALSE,
+             color = "black", size = 2, shape = 18) +
+  # Relier les points pour mieux visualiser avec le même décalage
+  geom_line(data = chr_lengths, aes(x = Chromosome, y = (chr_length_Mbp / convert_gypsy) + offset_gypsy, group = 1), 
+            inherit.aes = FALSE,
+            color = "black", linetype = "dashed", linewidth = 0.5) +
+  # Ajouter une annotation pour indiquer ce que représente la ligne
+  annotate("text", x = 1, y = max_y_primary_gypsy * 1.1, 
+           label = "", hjust = 0, size = 3, color = "black") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    axis.title.y.right = element_text(color = "black")
+  ) +
+  labs(subtitle = "Gypsy", title = "Nombre d'insertions par famille TEs par chromosome", x = "Chromosome")
+
+# Graphique pour Copia avec axe secondaire
+p2 <- ggplot(bar_data_copia, aes(x = Chromosome, y = Count, fill = Family)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_viridis_d(option = "viridis", name = "Family") +
+  # Définir les limites des axes Y et ajouter l'axe secondaire
+  scale_y_continuous(
+    name = "Nombre d'insertions TEs",
+    limits = c(0, max_y_primary_copia * 1.15),  # Augmenter la limite pour accommoder le décalage
+    sec.axis = sec_axis(~ . * convert_copia, name = "Taille du chromosome (Mbp)", breaks = seq(0, 80, 10))
+  ) +
+  # Ajouter les points pour représenter la taille des chromosomes avec un décalage
+  geom_point(data = chr_lengths, aes(x = Chromosome, y = (chr_length_Mbp / convert_copia) + offset_copia), 
+             inherit.aes = FALSE,
+             color = "black", size = 2, shape = 18) +
+  # Relier les points pour mieux visualiser avec le même décalage
+  geom_line(data = chr_lengths, aes(x = Chromosome, y = (chr_length_Mbp / convert_copia) + offset_copia, group = 1), 
+            inherit.aes = FALSE,
+            color = "black", linetype = "dashed", linewidth = 0.5) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    axis.title.y.right = element_text(color = "black")
+  ) +
+  labs(subtitle = "Copia", x = "Chromosome")
+
+# Afficher les deux graphiques côte à côte
+p1 + p2
+```
+
+#### Visualisation barplot recombi chr count TEs
+
+```{r}
+# Modification pour corriger l'axe des y
+library(ggplot2)
+library(dplyr)
+library(viridis)
+library(patchwork)
+library(readr)
+
+# Fonction pour calculer la taille cumulée en cM par chromosome
+calculate_cm_size <- function(recomb_data) {
+  # La fenêtre semble être de 0.1 Mbp d'après vos données (différence entre lignes consécutives)
+  window_size <- 0.1
+  
+  # Ne considérer que les lignes avec des taux de recombinaison non-NA
+  recomb_clean <- recomb_data %>% 
+    filter(!is.na(rec.rate))
+  
+  # Calculer la taille cumulée en cM (rec.rate * window_size)
+  cm_size <- sum(recomb_clean$rec.rate * window_size)
+  
+  return(cm_size)
+}
+
+# Calculer la taille cumulée en cM pour chaque chromosome
+cm_sizes <- c(
+  calculate_cm_size(recomb_chr1),
+  calculate_cm_size(recomb_chr2),
+  calculate_cm_size(recomb_chr3),
+  calculate_cm_size(recomb_chr4),
+  calculate_cm_size(recomb_chr5),
+  calculate_cm_size(recomb_chr6),
+  calculate_cm_size(recomb_chr7),
+  calculate_cm_size(recomb_chr8),
+  calculate_cm_size(recomb_chr9),
+  calculate_cm_size(recomb_chr10),
+  calculate_cm_size(recomb_chr11)
+)
+
+# Créer un dataframe contenant les chromosomes et leurs tailles en cM
+# Créer les noms de chromosomes au format "CC1.8.Chr01", "CC1.8.Chr02", etc.
+chr_names <- paste0("CC1.8.Chr", sprintf("%02d", 1:11))
+recomb_chr_sizes <- data.frame(
+  Chromosome = chr_names,
+  recomb_size_cM = cm_sizes,
+  chr_number = 1:11  # Ajout du numéro de chromosome pour l'ordre
+)
+
+
+# Préparation des données
+bar_data <- recap_data_TEs_chr %>%
+  group_by(Chromosome, Family, Superfamily) %>%
+  reframe(Count = Count) %>%
+  ungroup()
+
+# S'assurer que l'ordre des chromosomes est numérique plutôt qu'alphabétique
+bar_data$chr_number <- as.numeric(gsub("CC1.8.Chr(\\d+)", "\\1", bar_data$Chromosome))
+bar_data <- bar_data %>% arrange(chr_number)
+
+# Remplacer les longueurs des chromosomes par les tailles cumulées en cM
+chr_recomb_lengths <- recomb_chr_sizes
+
+# Créer deux jeux de données
+bar_data_gypsy <- bar_data %>% filter(Superfamily == "Gypsy")
+bar_data_copia <- bar_data %>% filter(Superfamily == "Copia")
+
+# Définir les limites maximales pour les deux axes
+max_y_primary_gypsy <- max(aggregate(Count ~ Chromosome, bar_data_gypsy, sum)$Count)
+max_y_primary_copia <- max(aggregate(Count ~ Chromosome, bar_data_copia, sum)$Count)
+max_y_secondary <- max(recomb_chr_sizes$recomb_size_cM, na.rm = TRUE) * 1.02  # Limite maximale pour l'axe secondaire
+
+# Calculer les facteurs de conversion correctement
+convert_gypsy <- max_y_secondary / max_y_primary_gypsy
+convert_copia <- max_y_secondary / max_y_primary_copia
+
+# Graphique pour Gypsy avec axe secondaire corrigé
+p1 <- ggplot(bar_data_gypsy, aes(x = reorder(Chromosome, chr_number), y = Count, fill = Family)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_viridis_d(option = "plasma", name = "Family") +
+  # Définir les limites des axes Y et ajouter l'axe secondaire
+  scale_y_continuous(
+    name = "Nombre d'insertions TEs",
+    limits = c(0, max_y_primary_gypsy * 1.2),
+    sec.axis = sec_axis(~ . * convert_gypsy, name = "Taille de chromosome en cM/pb")
+  ) +
+  # Ajouter les points pour représenter la taille des chromosomes sans décalage
+  geom_point(data = chr_recomb_lengths, aes(x = Chromosome, y = recomb_size_cM / convert_gypsy), 
+             inherit.aes = FALSE,
+             color = "black", size = 2, shape = 18) +
+  # Relier les points pour mieux visualiser sans décalage
+  geom_line(data = chr_recomb_lengths, aes(x = reorder(Chromosome, chr_number), y = recomb_size_cM / convert_gypsy, group = 1), 
+            inherit.aes = FALSE,
+            color = "black", linetype = "dashed", linewidth = 0.5) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    axis.title.y.right = element_text(color = "black")
+  ) +
+  labs(subtitle = "Gypsy", title = "Nombre d'insertions par famille TEs par chromosome et taux de recombinaison", x = "Chromosome")
+
+# Faire de même pour le graphique Copia
+p2 <- ggplot(bar_data_copia, aes(x = reorder(Chromosome, chr_number), y = Count, fill = Family)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_viridis_d(option = "viridis", name = "Family") +
+  scale_y_continuous(
+    name = "Nombre d'insertions TEs",
+    limits = c(0, max_y_primary_copia * 1.2),
+    sec.axis = sec_axis(~ . * convert_copia, name = "Taille de chromosome en cM/pb")
+  ) +
+  geom_point(data = chr_recomb_lengths, aes(x = Chromosome, y = recomb_size_cM / convert_copia), 
+             inherit.aes = FALSE,
+             color = "black", size = 2, shape = 18) +
+  geom_line(data = chr_recomb_lengths, aes(x = reorder(Chromosome, chr_number), y = recomb_size_cM / convert_copia, group = 1), 
+            inherit.aes = FALSE,
+            color = "black", linetype = "dashed", linewidth = 0.5) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    axis.title.y.right = element_text(color = "black")
+  ) +
+  labs(subtitle = "Copia", x = "Chromosome")
+
+p1 + p2
+```
+
+#### Visualisation barplot taille cumulée en zones codantes par chr & count TEs
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(viridis)
+library(patchwork)
+library(readr)
+
+regions_codantes_chr <- taille_cumulee_regions_codantes_par_chromosome %>%
+  mutate(
+    chr_number = as.numeric(gsub("CC1.8.Chr(\\d+)", "\\1", Chromosome))
+  ) %>%
+  arrange(chr_number)
+
+# Préparation des données
+bar_data <- recap_data_TEs_chr_recomb_genes %>%
+  group_by(Chromosome, Family, Superfamily) %>%
+  reframe(Count = Count) %>%
+  ungroup()
+
+# S'assurer que l'ordre des chromosomes est numérique plutôt qu'alphabétique
+bar_data$chr_number <- as.numeric(gsub("CC1.8.Chr(\\d+)", "\\1", bar_data$Chromosome))
+bar_data <- bar_data %>% arrange(chr_number)
+
+# Créer deux jeux de données
+bar_data_gypsy <- bar_data %>% filter(Superfamily == "Gypsy")
+bar_data_copia <- bar_data %>% filter(Superfamily == "Copia")
+
+# Définir les limites maximales pour les deux axes
+max_y_primary_gypsy <- max(aggregate(Count ~ Chromosome, bar_data_gypsy, sum)$Count)
+max_y_primary_copia <- max(aggregate(Count ~ Chromosome, bar_data_copia, sum)$Count)
+max_y_secondary <- max(regions_codantes_chr$lg_seq_codantes, na.rm = TRUE) * 1.02  # Limite maximale pour l'axe secondaire
+
+# Calculer les facteurs de conversion correctement
+convert_gypsy <- max_y_secondary / max_y_primary_gypsy
+convert_copia <- max_y_secondary / max_y_primary_copia
+
+# Graphique pour Gypsy avec axe secondaire corrigé
+p1 <- ggplot(bar_data_gypsy, aes(x = reorder(Chromosome, chr_number), y = Count, fill = Family)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_viridis_d(option = "plasma", name = "Family") +
+  # Définir les limites des axes Y et ajouter l'axe secondaire
+  scale_y_continuous(
+    name = "Nombre d'insertions TEs",
+    limits = c(0, max_y_primary_gypsy * 1.2),
+    sec.axis = sec_axis(~ . * convert_gypsy, name = "Taille cumulée des régions codantes (pb)")
+  ) +
+  # Ajouter les points pour représenter la taille des chromosomes sans décalage
+  geom_point(data = regions_codantes_chr, aes(x = Chromosome, y = lg_seq_codantes / convert_gypsy), 
+             inherit.aes = FALSE,
+             color = "black", size = 2, shape = 18) +
+  geom_line(data = regions_codantes_chr, aes(x = reorder(Chromosome, chr_number), y = lg_seq_codantes / convert_gypsy, group = 1), 
+            inherit.aes = FALSE,
+            color = "black", linetype = "dashed", linewidth = 0.5) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    axis.title.y.right = element_text(color = "black")
+  ) +
+  labs(subtitle = "Gypsy", title = "Nombre d'insertions par famille TEs par chromosome et taille des régions codantes", x = "Chromosome")
+
+# Faire de même pour le graphique Copia
+p2 <- ggplot(bar_data_copia, aes(x = reorder(Chromosome, chr_number), y = Count, fill = Family)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_viridis_d(option = "viridis", name = "Family") +
+  scale_y_continuous(
+    name = "Nombre d'insertions TEs",
+    limits = c(0, max_y_primary_copia * 1.2),
+    sec.axis = sec_axis(~ . * convert_copia, name = "Taille cumulée des régions codantes (pb)")
+  ) +
+geom_point(data = regions_codantes_chr, aes(x = Chromosome, y = lg_seq_codantes / convert_gypsy), 
+             inherit.aes = FALSE,
+             color = "black", size = 2, shape = 18) +
+  geom_line(data = regions_codantes_chr, aes(x = reorder(Chromosome, chr_number), y = lg_seq_codantes / convert_gypsy, group = 1), 
+            inherit.aes = FALSE,
+            color = "black", linetype = "dashed", linewidth = 0.5) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    axis.title.y.right = element_text(color = "black")
+  ) +
+  labs(subtitle = "Copia", x = "Chromosome")
+
+p1 + p2
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(viridis)
+library(patchwork)
+library(readr)
+
+# Utiliser directement les données de taille cumulée des régions codantes
+# et convertir en Mb (diviser par 1 000 000)
+regions_codantes_chr <- taille_cumulee_regions_codantes_par_chromosome %>%
+  mutate(
+    chr_number = as.numeric(gsub("CC1.8.Chr(\\d+)", "\\1", Chromosome)),
+    lg_seq_codantes_Mb = lg_seq_codantes / 1000000  # Conversion en Mb
+  ) %>%
+  arrange(chr_number)
+
+# Préparation des données
+bar_data <- recap_data_TEs_chr_recomb_genes %>%
+  group_by(Chromosome, Family, Superfamily) %>%
+  reframe(Count = Count) %>%
+  ungroup()
+
+# S'assurer que l'ordre des chromosomes est numérique plutôt qu'alphabétique
+bar_data$chr_number <- as.numeric(gsub("CC1.8.Chr(\\d+)", "\\1", bar_data$Chromosome))
+bar_data <- bar_data %>% arrange(chr_number)
+
+# Créer deux jeux de données
+bar_data_gypsy <- bar_data %>% filter(Superfamily == "Gypsy")
+bar_data_copia <- bar_data %>% filter(Superfamily == "Copia")
+
+# Définir les limites maximales pour les deux axes
+max_y_primary_gypsy <- max(aggregate(Count ~ Chromosome, bar_data_gypsy, sum)$Count)
+max_y_primary_copia <- max(aggregate(Count ~ Chromosome, bar_data_copia, sum)$Count)
+max_y_secondary <- max(regions_codantes_chr$lg_seq_codantes_Mb, na.rm = TRUE) * 1.02  # Limite maximale pour l'axe secondaire
+
+# Calculer les facteurs de conversion correctement
+convert_gypsy <- max_y_secondary / max_y_primary_gypsy
+convert_copia <- max_y_secondary / max_y_primary_copia
+
+# Assurer que tous les chromosomes dans bar_data existent dans regions_codantes_chr
+# et vice versa
+all_chrs <- unique(c(bar_data$Chromosome, regions_codantes_chr$Chromosome))
+regions_codantes_chr <- regions_codantes_chr %>%
+  filter(Chromosome %in% all_chrs)
+
+# Graphique pour Gypsy avec axe secondaire corrigé
+p1 <- ggplot(bar_data_gypsy, aes(x = reorder(Chromosome, chr_number), y = Count, fill = Family)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_viridis_d(option = "plasma", name = "Family") +
+  # Définir les limites des axes Y et ajouter l'axe secondaire
+  scale_y_continuous(
+    name = "Nombre d'insertions TEs",
+    limits = c(0, max_y_primary_gypsy * 1.2),
+    sec.axis = sec_axis(~ . * convert_gypsy, name = "Taille cumulée des régions codantes (Mb)")
+  ) +
+  # Ajouter les points pour représenter la taille des chromosomes sans décalage
+  geom_point(data = regions_codantes_chr, aes(x = Chromosome, y = lg_seq_codantes_Mb / convert_gypsy), 
+             inherit.aes = FALSE,
+             color = "black", size = 2, shape = 18) +
+  # Relier les points pour mieux visualiser sans décalage
+  geom_line(data = regions_codantes_chr, aes(x = reorder(Chromosome, chr_number), y = lg_seq_codantes_Mb / convert_gypsy, group = 1), 
+            inherit.aes = FALSE,
+            color = "black", linetype = "dashed", linewidth = 0.5) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    axis.title.y.right = element_text(color = "black")
+  ) +
+  labs(subtitle = "Gypsy", title = "Nombre d'insertions par famille TEs par chromosome et taille des régions codantes", x = "Chromosome")
+
+# Faire de même pour le graphique Copia
+p2 <- ggplot(bar_data_copia, aes(x = reorder(Chromosome, chr_number), y = Count, fill = Family)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_viridis_d(option = "viridis", name = "Family") +
+  scale_y_continuous(
+    name = "Nombre d'insertions TEs",
+    limits = c(0, max_y_primary_copia * 1.2),
+    sec.axis = sec_axis(~ . * convert_copia, name = "Taille cumulée des régions codantes (Mb)")
+  ) +
+  geom_point(data = regions_codantes_chr, aes(x = Chromosome, y = lg_seq_codantes_Mb / convert_copia), 
+             inherit.aes = FALSE,
+             color = "black", size = 2, shape = 18) +
+  geom_line(data = regions_codantes_chr, aes(x = reorder(Chromosome, chr_number), y = lg_seq_codantes_Mb / convert_copia, group = 1), 
+            inherit.aes = FALSE,
+            color = "black", linetype = "dashed", linewidth = 0.5) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+    axis.title.y.right = element_text(color = "black")
+  ) +
+  labs(subtitle = "Copia", x = "Chromosome")
+
+p1 + p2
+```
+
+# Par fenetre 1Mb
+
+```{r}
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Reformater aussi les noms de colonnes
+colnames(genes_closest_to_TEs_withIndv) <- gsub("-", ".", colnames(genes_closest_to_TEs_withIndv))
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer une liste de populations basée sur Group_analysis
+populations <- split(correspondance$formatted_id, correspondance$Group_analysis)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+
+# Créer un mapping d'ID à population
+id_to_pop <- setNames(correspondance$Group_analysis, correspondance$formatted_id)
+
+# Liste de toutes les populations
+all_pops <- list(
+  A = pop_A, G = pop_G, C = pop_C, D = pop_D, hb = pop_hb,
+  B = pop_B, O = pop_O, E = pop_E, R = pop_R, V = pop_V
+)
+
+# Définir les groupes de populations
+pop_groups <- list(
+  AG = c(pop_A, pop_G),
+  C = pop_C,
+  D = pop_D,
+  hb = pop_hb,
+  OB = c(pop_O, pop_B),
+  ER = c(pop_E, pop_R),
+  V = pop_V
+)
+
+# Fonction pour calculer les fréquences alléliques par fenêtre, population et famille
+calculate_allele_freq_by_window_pop <- function(data_window, pop_ids, superfamily, family) {
+  # Filtrer les données pour cette famille et ce superfamily
+  data_subset <- data_window[data_window$Superfamily == superfamily & data_window$Family == family, ]
+  
+  # S'assurer qu'il y a des données
+  if (nrow(data_subset) == 0) {
+    return(NULL)
+  }
+  
+  # Filtrer les colonnes correspondant à cette population
+  pop_cols <- intersect(pop_ids, colnames(data_subset))
+  
+  if (length(pop_cols) == 0) {
+    return(NULL)
+  }
+  
+  # Pour les données diploïdes: calculer le nombre total d'allèles 
+  # Pour chaque individu: 0=0 allèles/abs de TE, 1=1 allèle/hétérozygote TE, 2=2 allèles homozygote TEs
+  total_alleles <- sum(as.matrix(data_subset[, pop_cols]), na.rm = TRUE)
+  
+  # Calculer le nombre maximum d'allèles possibles (2 par individu non-NA)
+  max_alleles <- 2 * sum(!is.na(as.matrix(data_subset[, pop_cols])))
+  
+  # Calculer la fréquence allélique (nombre d'allèles / nombre max d'allèles)
+  allele_freq <- if(max_alleles > 0) total_alleles / max_alleles else 0
+  
+  return(allele_freq)
+}
+
+# Récupérer les chromosomes uniques depuis genes_closest_to_TEs_withIndv
+chromosomes <- unique(genes_closest_to_TEs_withIndv$TE_chrom)
+
+# Taille de la fenêtre en bp
+window_size <- 1e6  # 1Mb
+
+# Ajouter la longueur des chr extraites du fa.fai genome ref
+chr_length <- read.table("~/M2/Cafeier/Codes/TEs/Coffea_canephora_chr_length.txt", header=TRUE, sep="\t")
+
+# Créer une liste pour stocker les résultats
+results_list <- list()
+row_index <- 1
+
+# Créer un mapping d'ID à population groupe
+id_to_pop_group <- function(indiv_name) {
+  pop <- id_to_pop[indiv_name]
+  if (is.na(pop)) return("Unknown")
+  
+  if (pop %in% c("A", "G")) return("AG")
+  else if (pop == "C") return("C")
+  else if (pop == "D") return("D")
+  else if (pop == "hb") return("hb")
+  else if (pop %in% c("B", "O")) return("OB")
+  else if (pop %in% c("E", "R")) return("ER")
+  else if (pop == "V") return("V")
+  else return("Unknown")
+}
+
+# Identifier les colonnes qui correspondent à des individus valides
+all_valid_indiv_ids <- unlist(all_pops)
+indiv_cols <- which(colnames(genes_closest_to_TEs_withIndv) %in% all_valid_indiv_ids)
+
+# Si aucune colonne d'individu n'est trouvée, utiliser l'ancienne méthode
+if (length(indiv_cols) == 0) {
+  indiv_cols_start <- 23  # Ajustez ce numéro selon votre dataframe exact
+  indiv_cols_end <- ncol(genes_closest_to_TEs_withIndv) - 1  # Ajustez si nécessaire
+  indiv_indices <- indiv_cols_start:indiv_cols_end
+} else {
+  indiv_indices <- indiv_cols
+}
+
+# Boucle sur les chromosomes
+for (chrom in chromosomes) {
+  data_chr <- genes_closest_to_TEs_withIndv %>% filter(TE_chrom == chrom)
+  
+  # Obtenir la longueur du chromosome
+  chr_len <- chr_length$chr_length[chr_length$Chromosome == chrom]
+  if (is.na(chr_len)) {
+    warning(paste("Longueur du chromosome non trouvée pour", chrom))
+    next
+  }
+  
+  # Calculer le nombre de fenêtres
+  num_windows <- ceiling(chr_len / window_size)
+  
+  # Boucle sur les fenêtres
+  for (w in 1:num_windows) {
+    start_pos <- (w - 1) * window_size + 1
+    end_pos <- min(w * window_size, chr_len)
+    
+    # Filtrer les données pour cette fenêtre
+    data_window <- data_chr %>% filter(TE_start >= start_pos & TE_end <= end_pos)
+    
+    if (nrow(data_window) == 0) next
+    
+    # Obtenir toutes les familles uniques pour Gypsy et Copia dans cette fenêtre
+    gypsy_families <- unique(data_window$Family[data_window$Superfamily == "Gypsy"])
+    copia_families <- unique(data_window$Family[data_window$Superfamily == "Copia"])
+    
+    # Calcul des statistiques pour la fenêtre
+    mean_gene_distance <- mean(data_window$TE_Gene_distance, na.rm = TRUE)
+    median_gene_distance <- median(data_window$TE_Gene_distance, na.rm = TRUE)
+    mean_recomb_rate <- mean(data_window$recombination_rate, na.rm = TRUE)
+    
+    # Boucle sur chaque individu
+    for (i in indiv_indices) {
+      indiv_name <- colnames(data_window)[i]
+      
+      # Vérifier si le nom de la colonne est un nom d'individu valide
+      if (is.na(indiv_name) || !any(sapply(all_pops, function(p) indiv_name %in% p))) {
+        next
+      }
+      
+      # Déterminer la population de l'individu
+      pop <- id_to_pop[indiv_name]
+      if (is.na(pop)) pop <- "Unknown"
+      
+      # Déterminer le groupe de population
+      pop_group <- id_to_pop_group(indiv_name)
+      
+      # Fonction pour traiter chaque famille
+      process_family_window <- function(family, superfamily) {
+        # S'assurer que la colonne est numérique
+        if (!is.numeric(data_window[[i]])) {
+          data_window[[i]] <- as.numeric(as.character(data_window[[i]]))
+        }
+        
+        # Filtrer les données pour cette famille
+        subset_data <- data_window[data_window$Superfamily == superfamily & data_window$Family == family, ]
+        
+        # S'assurer qu'il y a des données pour cette combinaison
+        if (nrow(subset_data) == 0) {
+          return()  # Sortir de la fonction si pas de données
+        }
+        
+        # Calculer les statistiques pour cette famille dans cette fenêtre
+        family_mean_gene_distance <- mean(subset_data$TE_Gene_distance, na.rm = TRUE)
+        family_median_gene_distance <- median(subset_data$TE_Gene_distance, na.rm = TRUE)
+        family_mean_recomb_rate <- mean(subset_data$recombination_rate, na.rm = TRUE)
+        
+        total_family <- nrow(subset_data)
+        sum_family <- sum(subset_data[[i]], na.rm = TRUE)
+        count_hetero_family <- sum(subset_data[[i]] == 1, na.rm = TRUE)
+        count_homo_family <- sum(subset_data[[i]] == 2, na.rm = TRUE)
+        count_abs_family <- sum(subset_data[[i]] == 0, na.rm = TRUE)
+        TEs_load <- count_hetero_family + (2 * count_homo_family)
+        
+        # Calcul des fréquences alléliques par groupe de population
+        allele_freq <- NA
+        if (pop_group != "Unknown") {
+          pop_ids <- pop_groups[[pop_group]]
+          allele_freq <- calculate_allele_freq_by_window_pop(data_window, pop_ids, superfamily, family)
+        }
+        
+        # Créer une ligne de résultat
+        results_list[[row_index]] <<- data.frame(
+          Chromosome = chrom,
+          Window = w,
+          Window_start = start_pos,
+          Window_end = end_pos,
+          Individual = indiv_name,
+          Population = pop,
+          Population_Group = pop_group,
+          Superfamily = superfamily,
+          Family = family,
+          Count = sum_family,
+          Count_hetero = count_hetero_family,
+          Count_homo = count_homo_family,
+          Ratio = ifelse(count_homo_family == 0, NA, count_hetero_family / count_homo_family),
+          Total = total_family,
+          Density = sum_family / (window_size / 1e6),
+          Mean_Gene_Distance = family_mean_gene_distance,
+          Median_Gene_Distance = family_median_gene_distance,
+          Mean_Recombination_Rate = family_mean_recomb_rate,
+          Window_Mean_Gene_Distance = mean_gene_distance,
+          Window_Median_Gene_Distance = median_gene_distance,
+          Window_Mean_Recombination_Rate = mean_recomb_rate,
+          Allele_Freq_Pop_Group = allele_freq  # Ajout de la fréquence allélique par groupe de population
+        )
+        row_index <<- row_index + 1
+      }
+      
+      # Appliquer la fonction à chaque famille
+      sapply(gypsy_families, process_family_window, superfamily = "Gypsy")
+      sapply(copia_families, process_family_window, superfamily = "Copia")
+    }
+  }
+}
+
+# Combiner tous les résultats
+recap_TE_window_recomb_genes_freqs <- bind_rows(results_list)
+
+# Réorganiser les niveaux des groupes de population
+recap_TE_window_recomb_genes_freqs$Population_Group <- factor(
+  recap_TE_window_recomb_genes_freqs$Population_Group,
+  levels = c("D", "C", "AG", "hb", "ER", "OB", "V", "Unknown")
+)
+
+# Calcul des statistiques résumées par fenêtre avec les nouvelles métriques
+summary_recap_TE_window_freqs <- recap_TE_window_recomb_genes_freqs %>%
+  group_by(Chromosome, Window, Window_start, Window_end, Population_Group, Superfamily, Family) %>%
+  summarise(
+    Mean_Count = mean(Count, na.rm = TRUE),
+    Mean_Density = mean(Density, na.rm = TRUE),
+    Median_Density = median(Density, na.rm = TRUE),
+    SD_Density = sd(Density, na.rm = TRUE),
+    Total_TEs = sum(Count, na.rm = TRUE),
+    # Statistiques sur les distances aux gènes
+    Mean_Gene_Distance = mean(Mean_Gene_Distance, na.rm = TRUE),
+    Median_Gene_Distance = median(Median_Gene_Distance, na.rm = TRUE),
+    # Statistiques sur les taux de recombinaison
+    Mean_Recombination_Rate = mean(Mean_Recombination_Rate, na.rm = TRUE),
+    # Fréquences alléliques moyennes
+    Mean_Allele_Freq = mean(Allele_Freq_Pop_Group, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Visualisation ou analyse ensuite
+print(recap_TE_window_recomb_genes_freqs)
+print(summary_recap_TE_window_freqs)
+
+# Sauvegarder le résultat
+write.table(recap_TE_window_recomb_genes_freqs, 
+          "~/M2/Cafeier/Codes/Matrice_indv/recap_TE_window_recomb_genes_freqs_1Mb.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Sauvegarde des streatistiques résumées
+write.table(summary_recap_TE_window_freqs, 
+          "~/M2/Cafeier/Codes/Matrice_indv/summary_recap_TE_window_freqs_1Mb.txt", 
+          sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+```
+
+```{r}
+# Visualisation des fréquences alléliques par fenêtre
+# Choisir le premier chromosome pour la visualisation
+first_chrom <- chromosomes[1]
+
+# Visualisation des fréquences alléliques par fenêtre
+ggplot(summary_recap_TE_window_freqs %>% filter(Chromosome == first_chrom), 
+       aes(x = Window, y = Mean_Allele_Freq, color = Family, group = interaction(Population_Group, Superfamily))) +
+  geom_line() +
+  geom_point(size = 1) +
+  facet_wrap(~Population_Group, ncol = 1) +
+  labs(title = paste("Fréquence allélique moyenne par fenêtre de 1Mb -", first_chrom),
+       x = "Fenêtre (1Mb)",
+       y = "Fréquence allélique moyenne") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+# Visualisation des distances aux gènes par fenêtre
+ggplot(summary_recap_TE_window_freqs %>% filter(Chromosome == first_chrom), 
+       aes(x = Window, y = Mean_Gene_Distance, color = Family, group = interaction(Population_Group, Superfamily))) +
+  geom_line() +
+  geom_point(size = 1) +
+  facet_wrap(~Population_Group, ncol = 1) +
+  labs(title = paste("Distance moyenne aux gènes par fenêtre de 1Mb -", first_chrom),
+       x = "Fenêtre (1Mb)",
+       y = "Distance moyenne aux gènes (bp)") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+# Visualisation des taux de recombinaison par fenêtre
+ggplot(summary_recap_TE_window_freqs %>% filter(Chromosome == first_chrom), 
+       aes(x = Window, y = Mean_Recombination_Rate, color = Family, group = interaction(Population_Group, Superfamily))) +
+  geom_line() +
+  geom_point(size = 1) +
+  facet_wrap(~Population_Group, ncol = 1) +
+  labs(title = paste("Taux de recombinaison moyen par fenêtre de 1Mb -", first_chrom),
+       x = "Fenêtre (1Mb)",
+       y = "Taux de recombinaison moyen") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+boucle sur tous les chr enregistrement des graphs
+
+```{r}
+# Boucle sur chaque chromosome
+for (chrom in chromosomes) {
+  
+  # Sous-ensemble des données
+  data_chrom <- summary_recap_TE_window_freqs %>% filter(Chromosome == chrom)
+  
+  # Titre général
+  title_base <- paste(" -", chrom)
+  
+  # Graphique 1 : Fréquences alléliques
+  p1 <- ggplot(data_chrom, 
+               aes(x = Window, y = Mean_Allele_Freq, color = Family, group = interaction(Population_Group, Superfamily))) +
+    geom_line() +
+    geom_point(size = 1) +
+    facet_wrap(~Population_Group, ncol = 1) +
+    labs(title = paste("Fréquence TEs moyenne par fenêtre de 1Mb", title_base),
+         x = "Fenêtre (1Mb)",
+         y = "Fréquence TEs moyenne") +
+    theme_bw() +
+    theme(legend.position = "bottom")
+  
+  ggsave(filename = paste0("~/M2/Cafeier/Codes/Figures/Analyses_genomique_chr/allele_freq_", chrom, ".png"), plot = p1, width = 10, height = 6)
+
+  # Graphique 2 : Distance aux gènes
+  p2 <- ggplot(data_chrom, 
+               aes(x = Window, y = Mean_Gene_Distance, color = Family, group = interaction(Population_Group, Superfamily))) +
+    geom_line() +
+    geom_point(size = 1) +
+    facet_wrap(~Population_Group, ncol = 1) +
+    labs(title = paste("Distance moyenne aux gènes par fenêtre de 1Mb", title_base),
+         x = "Fenêtre (1Mb)",
+         y = "Distance moyenne aux gènes (bp)") +
+    theme_bw() +
+    theme(legend.position = "bottom")
+  
+  ggsave(filename = paste0("~/M2/Cafeier/Codes/Figures/Analyses_genomique_chr/gene_distance_", chrom, ".png"), plot = p2, width = 10, height = 6)
+
+  # Graphique 3 : Taux de recombinaison
+  p3 <- ggplot(data_chrom, 
+               aes(x = Window, y = Mean_Recombination_Rate, color = Family, group = interaction(Population_Group, Superfamily))) +
+    geom_line() +
+    geom_point(size = 1) +
+    facet_wrap(~Population_Group, ncol = 1) +
+    labs(title = paste("Taux de recombinaison moyen par fenêtre de 1Mb", title_base),
+         x = "Fenêtre (1Mb)",
+         y = "Taux de recombinaison moyen") +
+    theme_bw() +
+    theme(legend.position = "bottom")
+  
+  ggsave(filename = paste0("~/M2/Cafeier/Codes/Figures/Analyses_genomique_chr/recombination_rate_", chrom, ".png"), plot = p3, width = 10, height = 6)
+}
+
+```
+
+## Corrélations caractéristiques génomiques
+
+Recombi par fenetre
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(ggpubr)
+library(tidyr)
+library(purrr)
+
+df_filtered_rho <- genes_closest_to_TEs_withIndv %>%
+  filter(Superfamily %in% c("Gypsy", "Copia"))
+
+############# tests statsss ################
+# par superfamilles gypsy copia 
+wilcox_result <- wilcox.test(recombination_rate ~ Superfamily, data = df_filtered_rho)
+print(wilcox_result)
+
+# par famille
+kruskal_result <- kruskal.test(recombination_rate ~ Family, data = df_filtered_rho)
+print(kruskal_result)
+
+pairwise_result <- pairwise.wilcox.test(
+  df_filtered_rho$recombination_rate,
+  df_filtered_rho$Family,
+  p.adjust.method = "bonferroni"
+)
+print(pairwise_result)
+
+# par famille par Superfamily
+results <- df_filtered_rho %>%
+  group_by(Superfamily) %>%
+  group_map(~ {
+    df_sub <- .x
+      pairwise_result <- pairwise.wilcox.test(
+        df_sub$recombination_rate,
+        df_sub$Family,
+        p.adjust.method = "bonferroni"
+      )
+      list(Superfamily = unique(df_sub$Superfamily), result = pairwise_result)
+  })
+
+# Afficher les résultats
+for (res in results) {
+  cat("\n--- Superfamily:", res$Superfamily, "---\n")
+  print(res$result)
+}
+```
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(ggpubr)
+library(tidyr)
+library(patchwork)  # Pour organiser les plots côte à côte
+
+recap_TE_window_recomb_genes_freqs <- read.table("~/M2/Cafeier/Codes/Matrice_indv/recap_TE_window_recomb_genes_freqs_1Mb.txt", header=TRUE, sep="\t")
+
+# tests wilcoxon
+# Comparaisons intra-superfamille
+library(rstatix)
+# Fonction pour calculer les p-values par superfamille
+get_pvalues_table <- function(superfam) {
+  recap_TE_window_recomb_genes_freqs %>%
+    filter(Superfamily == superfam) %>%
+    wilcox_test(Mean_Recombination_Rate ~ Family, paired = FALSE) %>%
+    adjust_pvalue(method = "BH") %>%
+    add_significance()
+}
+
+pvalues_copia <- get_pvalues_table("Copia") %>% mutate(Superfamily = "Copia")
+pvalues_gypsy <- get_pvalues_table("Gypsy") %>% mutate(Superfamily = "Gypsy")
+
+pvalues_table <- bind_rows(pvalues_copia, pvalues_gypsy)
+# Afficher un tableau de résumé
+library(gridExtra)
+
+# Réduire aux colonnes importantes
+p_table <- pvalues_table %>%
+  select(Superfamily, group1, group2, p, p.adj, p.adj.signif)
+
+
+## boxplots
+boxplot_recombi_count_window <- ggplot(recap_TE_window_recomb_genes_freqs, aes(x = Family, y = Mean_Recombination_Rate, fill = Family)) +
+  stat_summary(fun = mean, geom = "point", shape = 18, size = 3, color = "black") +  # Point noir pour la moyenne
+  geom_boxplot(outlier.alpha = 0.2) +
+  stat_compare_means(method = "wilcox.test", label = "p.format") +
+  facet_wrap(~ Superfamily, scales = "free_x") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(
+    title = "Taux de recombinaison par Familles TEs",
+    x = "Famille TE",
+    y = "Taux de recombinaison moyen par fenêtre"
+  )
+
+
+boxplot_recombi_count_window
+p_table
+
+
+```
+
+Corrélations
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(broom)  # pour tidy() sur cor.test
+
+# Filtrer les deux superfamilles
+filtered_data <- recap_TE_window_recomb_genes_freqs %>%
+  filter(Superfamily %in% c("Gypsy", "Copia"))
+
+# Fonction pour calculer les deux corrélations + p-values
+correlation_with_pval <- function(df) {
+  cor1 <- cor.test(df$Count, df$Mean_Gene_Distance, use = "complete.obs", method = "spearman")
+  cor2 <- cor.test(df$Count, df$Window_Mean_Recombination_Rate, use = "complete.obs", method = "spearman")
+  
+  tibble(
+    cor_gene_dist = cor1$estimate,
+    pval_gene_dist = cor1$p.value,
+    cor_recomb_rate = cor2$estimate,
+    pval_recomb_rate = cor2$p.value,
+    n = nrow(df)
+  )
+}
+
+# Fonction pour ajouter étoiles
+significance_stars <- function(pval) {
+  case_when(
+    pval <= 0.001 ~ "***",
+    pval <= 0.01 ~ "**",
+    pval <= 0.05 ~ "*",
+    TRUE ~ "ns"
+  )
+}
+
+# Appliquer aux groupes
+correlation_results <- filtered_data %>%
+  group_by(Superfamily, Family) %>%
+  nest() %>%
+  mutate(cor_stats = map(data, correlation_with_pval)) %>%
+  unnest(cor_stats) %>%
+  mutate(
+    signif_gene_dist = significance_stars(pval_gene_dist),
+    signif_recomb_rate = significance_stars(pval_recomb_rate)
+  ) %>%
+  select(-data) %>%
+  arrange(Superfamily, desc(abs(cor_gene_dist)))  # tri optionnel
+
+# Affichage
+print(correlation_results)
+
+```
+
+Plots
+
+```{r}
+# Fonction générique pour la distance aux gènes
+make_plot_genedist <- function(data, x_var, x_label, superfamily_label) {
+  data_filtered <- data %>%
+    group_by(Family) %>%
+    filter(
+      n_distinct(Count, na.rm = TRUE) > 1,
+      n_distinct(.data[[x_var]], na.rm = TRUE) > 1
+    ) %>%
+    ungroup()
+
+  ggplot(data_filtered, aes_string(x = x_var, y = "Count")) +
+    geom_point(alpha = 0.3, size = 0.3) +
+    geom_smooth(method = "lm", se = TRUE, aes(color = Family), show.legend = FALSE) +
+    stat_cor(method = "spearman", label.x.npc = "left", label.y.npc = "top", size = 3) +
+    facet_wrap(~ Family, scales = "free") +
+    labs(
+      title = paste0("Corrélation avec la distance aux séquences codantes - ", superfamily_label),
+      x = x_label,
+      y = "Charge TEs"
+    ) +
+    theme_bw()
+}
+
+# Fonction générique pour la recombinaison
+make_plot_recomb <- function(data, x_var, x_label, superfamily_label) {
+  data_filtered <- data %>%
+    group_by(Family) %>%
+    filter(
+      n_distinct(Count, na.rm = TRUE) > 1,
+      n_distinct(.data[[x_var]], na.rm = TRUE) > 1
+    ) %>%
+    ungroup()
+
+  ggplot(data_filtered, aes_string(x = x_var, y = "Count")) +
+    geom_point(alpha = 0.3, size = 0.3) +
+    geom_smooth(method = "lm", se = TRUE, aes(color = Family), show.legend = FALSE) +
+    stat_cor(method = "spearman", label.x.npc = "left", label.y.npc = "top", size = 3) +
+    facet_wrap(~ Family, scales = "free") +
+    labs(
+      title = paste0("Corrélation avec le taux de recombinaison par fenêtre - ", superfamily_label),
+      x = x_label,
+      y = "Charge TEs"
+    ) +
+    theme_bw()
+}
+
+
+
+
+gypsy_gene_dist_plot <- make_plot_genedist(data_gypsy, "Mean_Gene_Distance", "Distance moyenne aux gènes (1Mb)", "Gypsy")
+gypsy_recomb_plot    <- make_plot_recomb(data_gypsy, "Window_Mean_Recombination_Rate", "Taux de recombinaison moyen (1Mb)", "Gypsy")
+
+copia_gene_dist_plot <- make_plot_genedist(data_copia, "Mean_Gene_Distance", "Distance moyenne aux gènes (1Mb)", "Copia")
+copia_recomb_plot    <- make_plot_recomb(data_copia, "Window_Mean_Recombination_Rate", "Taux de recombinaison moyen (1Mb)", "Copia")
+
+
+gypsy_gene_dist_plot
+copia_gene_dist_plot
+gypsy_recomb_plot
+copia_recomb_plot
+```
+
+## Permanova
+
+ne fait aucune hypothèse de distribution concernant la normalité multivariée ou l'homogénéité des variances. Lorsque l'ANOVA quantifie la variation au sein d'un ensemble de données comme étant la somme des carrés des écarts entre les points et leur moyenne et permet de calculer la variation totale et au sein des groupes, la PERMANOVA calcule la variation au sein d'un groupe à partir d'une matrice de distance. C'est à dire, la somme des différences au carré entre les points et leur centroïde est égale à la somme des distances interpoints au carré divisée par le nombre de points (Anderson 2001). Elle est connue sous le nom de théorème de Huygens, car elle a été formulée pour la première fois par Christiaan Huygens au XVIIe siècle (Anderson et al. 2008). Plus de détails dans Anderson (2001, 2017), McArdle & Anderson (2001), and Anderson et al. (2008).
+
+La statistique de test PERMANOVA, est calculée par le rapport entre la variation intergroupes sur intragroupes, le numérateur et le dénominateur pondérés par leurs degrés de liberté. Cette statistique est supérieure ou égale à zéro et les valeurs les plus élevées correspondant à une plus grande importance du facteur testé.
+
+```{r}
+# adapter ma fonction pour avoir l'abondance par fenetre de 1Mb
+# Chargement du fichier
+data <- read.table("~/M2/Cafeier/Codes/Matrice_indv/Indv_matrix_012_filtered_processed.txt", header=TRUE, sep="\t")
+# enlever les gyspsy non assignés
+# Filtrer pour retirer les lignes où Family est vide
+data <- data %>% filter(Family != "")
+# enlever les individus sans autorisation d'utilisation... :3
+library(dplyr)
+data <- data %>% select(-all_of(c(
+  "X20135.NoIndex.L003.MERGED", "X20159.NoIndex.L005.MERGED", "X20511_NoIndex_L001.MERGED", 
+  "X20650.NoIndex.L007.MERGED", "X20658.NoIndex.L002.MERGED", "X20708.NoIndex.L008.MERGED", 
+  "X20723.NoIndex.L007.MERGED", "X20731.NoIndex.L002.MERGED", "C.147", "C018.MERGED", 
+  "J.18", "J.2", "J.22", "J.9", "M1", "M2", "M3", "M4", 
+  "N.11", "N.37", "N.38", "N.39", "N.42", "N.5"
+)))
+
+# Chargement des correspondances individus-populations
+correspondance <- read.table("~/M2/Cafeier/data_coffea/correspondance_indv_pops.txt", header=TRUE, sep=" ")
+
+# Formater les identifiants pour correspondre aux noms de `data`
+correspondance$formatted_id <- gsub("-", "\\.", correspondance$Bam)
+
+# Créer une liste de populations basée sur Group_analysis
+populations <- split(correspondance$formatted_id, correspondance$Group_analysis)
+
+# Créer des listes pour chaque population avec les noms formatés
+pop_A <- correspondance$formatted_id[correspondance$Group_analysis == "A"]
+pop_G <- correspondance$formatted_id[correspondance$Group_analysis == "G"]
+pop_C <- correspondance$formatted_id[correspondance$Group_analysis == "C"]
+pop_D <- correspondance$formatted_id[correspondance$Group_analysis == "D"]
+pop_hb <- correspondance$formatted_id[correspondance$Group_analysis == "hb"]
+pop_B <- correspondance$formatted_id[correspondance$Group_analysis == "B"]
+pop_O <- correspondance$formatted_id[correspondance$Group_analysis == "O"]
+pop_E <- correspondance$formatted_id[correspondance$Group_analysis == "E"]
+pop_R <- correspondance$formatted_id[correspondance$Group_analysis == "R"]
+pop_V <- correspondance$formatted_id[correspondance$Group_analysis == "V"]
+
+# Récupérer les chromosomes uniques
+chromosomes <- unique(data$CHROM)
+
+# Charger les longueurs des chromosomes
+chr_length <- read.table("~/M2/Cafeier/Codes/TEs/Coffea_canephora_chr_length.txt", header=TRUE, sep="\t")
+
+# Dataframe pour stocker les résultats par fenêtre de 1Mb
+recap_TE_window_recom_genes <- data.frame()
+
+# Taille de la fenêtre en bp
+window_size <- 1e6
+
+
+# Préparer la liste des résultats
+results_list <- list()
+row_index <- 1
+
+# Préparer la correspondance ID → Population
+id_to_pop <- setNames(correspondance$Group_analysis, correspondance$formatted_id)
+
+for (chrom in chromosomes) {
+  data_chr <- data %>% filter(CHROM == chrom)
+  chr_len <- chr_length$chr_length[chr_length$Chromosome == chrom]
+  num_windows <- ceiling(chr_len / window_size)
+  
+  for (w in 1:num_windows) {
+    start_pos <- (w - 1) * window_size + 1
+    end_pos <- min(w * window_size, chr_len)
+    data_window <- data_chr %>% filter(POS >= start_pos & POS <= end_pos)
+    
+    if (nrow(data_window) == 0) next
+    
+    for (i in 24:139) {
+      if (i <= ncol(data_window)) {
+        indiv_name <- colnames(data_window)[i]
+        pop <- id_to_pop[indiv_name]
+        if (is.na(pop)) pop <- "Unknown"
+        
+        gypsy_families <- unique(data_window$Family[data_window$Superfamily == "RLG"])
+        copia_families <- unique(data_window$Family[data_window$Superfamily == "RLC"])
+        
+        process_family_window <- function(family, superfamily) {
+          family_data <- data_window[data_window$Superfamily == superfamily & data_window$Family == family, ]
+          if (nrow(family_data) == 0) return()
+          
+          total_family <- nrow(family_data)
+          sum_family <- sum(family_data[, i])
+          count_hetero_family <- sum(family_data[, i] == 1)
+          count_homo_family <- sum(family_data[, i] == 2)
+          count_abs_family <- sum(family_data[, i] == 0)
+          TEs_load <- count_hetero_family + (2 * count_homo_family)
+          
+          results_list[[row_index]] <<- data.frame(
+            Chromosome = chrom,
+            Window = w,
+            Window_start = start_pos,
+            Window_end = end_pos,
+            Individual = indiv_name,
+            Population = pop,
+            Superfamily = ifelse(superfamily == "RLG", "Gypsy", "Copia"),
+            Family = family,
+            Count = sum_family,
+            Count_hetero = count_hetero_family,
+            Count_homo = count_homo_family,
+            Ratio = ifelse(count_homo_family == 0, NA, count_hetero_family / count_homo_family),
+            Ratio_proportion = ifelse(count_homo_family == 0, NA,
+                                      (count_hetero_family / total_family) / (count_homo_family / total_family)),
+            Total = total_family,
+            Proportion = sum_family / (2 * total_family),
+            Proportion_hetero = count_hetero_family / total_family,
+            Proportion_homo = count_homo_family / total_family,
+            Density = sum_family / (window_size / 1e6)
+          )
+          row_index <<- row_index + 1
+        }
+        
+        sapply(gypsy_families, process_family_window, superfamily = "RLG")
+        sapply(copia_families, process_family_window, superfamily = "RLC")
+      }
+    }
+  }
+}
+
+# Combiner les résultats
+recap_TE_window_recom_genes <- bind_rows(results_list)
+
+# Grouper les populations comme avant
+recap_TE_window_recom_genes <- recap_TE_window_recom_genes %>%
+  mutate(Population_Group = case_when(
+    Population == "C" ~ "C",
+    Population == "D" ~ "D",
+    Population %in% c("A", "G") ~ "AG",
+    Population == "hb" ~ "hb",
+    Population %in% c("E", "R") ~ "ER",
+    Population %in% c("B", "O") ~ "OB",
+    Population == "V" ~ "V",
+    TRUE ~ "Unknown"
+  ))
+
+# Réorganiser
+recap_TE_window_recom_genes$Population_Group <- factor(recap_TE_window_recom_genes$Population_Group,
+                                              levels = c( "C", "D","AG", "hb","ER","OB", "V", "Unknown"))
+
+# Visualisation ou analyse ensuite
+print(recap_TE_window_recom_genes)
+
+# Sauvegarde des résultats
+write.table(recap_TE_window_recom_genes, "~/M2/Cafeier/Codes/Matrice_indv/recap_TE_window_recom_genes_1Mb.txt", 
+            sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+
+
+
+# Calcul des statistiques résumées par fenêtre
+summary_recap_TE_window_recom_genes <- recap_TE_window_recom_genes %>%
+  group_by(Chromosome, Window, Window_start, Window_end, Population_Group, Superfamily) %>%
+  summarise(
+    Mean_Count = mean(Count, na.rm = TRUE),
+    Mean_Density = mean(Density, na.rm = TRUE),
+    Median_Density = median(Density, na.rm = TRUE),
+    SD_Density = sd(Density, na.rm = TRUE),
+    Total_TEs = sum(Count, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+print(summary_recap_TE_window_recom_genes)
+# Sauvegarde des statistiques résumées
+write.table(summary_recap_TE_window_recom_genes, "~/M2/Cafeier/Codes/Matrice_indv/summary_recap_TE_window_recom_genes_1Mb.txt", 
+            sep="\t", row.names=FALSE, col.names=TRUE, quote=FALSE)
+
+# Visualisation simple des densités moyennes par fenêtre
+library(ggplot2)
+
+# Créer une visualisation pour un chromosome spécifique (ex: premier chromosome)
+first_chrom <- chromosomes[1]
+
+ggplot(summary_recap_TE_window_recom_genes %>% filter(Chromosome == first_chrom), 
+       aes(x = Window, y = Mean_Density, color = Superfamily, group = interaction(Population_Group, Superfamily))) +
+  geom_line() +
+  geom_point(size = 1) +
+  facet_wrap(~Population_Group, ncol = 1) +
+  labs(title = paste("Densité moyenne d'éléments transposables par fenêtre de 1Mb -", first_chrom),
+       x = "Fenêtre (1Mb)",
+       y = "Densité moyenne (nombre/Mb)") +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+# data long
+indv_columns <- colnames(genes_closest_to_TEs_withIndv)[24:139]
+
+
+long_data <- genes_closest_to_TEs_withIndv %>%
+  pivot_longer(
+    cols = all_of(indv_columns),
+    names_to = "Individual",
+    values_to = "Count"
+  ) %>%
+  filter(Count > 0) %>%  # Only keep TEs present in individuals
+  left_join(correspondance, by = c("Individual" = "formatted_id"))
+
+# PERMANOVA 
+dist_matrix_indv <- vegdist(long_data$Count, method = "bray")
+
+permanova_result_indv <- adonis2(
+  dist_matrix_indv ~ TE_chrom + Superfamily + Family + Group_analysis + TE_Gene_distance,
+  data = long_data,
+  permutations = 999
+)
+```
